@@ -1,8 +1,8 @@
 CC := gcc
 C_FILES := $(wildcard src/*.c)
 OBJ_FILES := $(addprefix obj/,$(notdir $(C_FILES:.c=.o)))
-CFLAGS := -c -std=c89 -Wall
-LDFLAGS :=
+CFLAGS := -c -std=c89 -Wall -pedantic
+LDFLAGS := -lncurses
 RM := rm -f
 NAME := e-type
 

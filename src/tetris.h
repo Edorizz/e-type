@@ -17,55 +17,35 @@
  *
  */
 
-#include <stdio.h>
+#ifndef TETRIS_H
+#define TETRIS_H
+
+/* Standard Tetris board dimensions */
+#define BOARD_HEIGHT	20
+#define BOARD_WIDTH	10
+
+/* Bit flags */
+#define QUIT		0
+#define DRAW		1
+
+/* Bit manipulation */
+#define BIT(n)		(1 << n)
+
 #include <stdint.h>
+#include <ncurses.h>
 
-#include "tetris.h"
+typedef struct {
+	uint8_t x, y;
+} point;
 
-int
-main(int argc, char **argv)
-{
-	game_state game;
+typedef struct {
+	uint8_t board[BOARD_HEIGHT][BOARD_WIDTH];
+	uint8_t flags;
+	point current_mino;
+} game_state;
 
-	/* Initialize ncurses */
-	initscr();
-	cbreak();
-	noecho();
-	timeout(0);
+void new_game(game_state *game);
+void draw_board(game_state *game);
+void move_mino(game_state *game, int dx, int dy);
 
-	new_game(&game);
-	/* Game loop */
-	while (!(game.flags & BIT(QUIT))) {
-		switch (getch()) {
-		case 'W':
-		case 'w':
-			move_mino(&game, 0, -1);
-			break;
-		case 'S':
-		case 's':
-			move_mino(&game, 0, 1);
-			break;
-		case 'A':
-		case 'a':
-			move_mino(&game, -1, 0);
-			break;
-		case 'D':
-		case 'd':
-			move_mino(&game, 1, 0);
-			break;
-		case 'Q':
-		case 'q':
-			game.flags |= BIT(QUIT);
-			break;
-		}
-
-		if (game.flags & BIT(DRAW)) {
-			draw_board(&game);
-			refresh();
-		}
-	}
-	
-	endwin();
-	return 0;
-}
-
+#endif /* TETRIS_H */
