@@ -83,6 +83,7 @@ init_ncurses(void)
 	initscr();
 	cbreak();
 	noecho();
+	curs_set(0);
 	timeout(0);
 
 	/* Init color */

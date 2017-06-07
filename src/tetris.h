@@ -68,8 +68,8 @@ typedef struct {
 void new_game(game_state *game);
 void draw_board(game_state *game);
 
+int  in_range(int x, int y);
 void spawn_mino(game_state *game);
-void clear_mino(game_state *game);
 void move_mino(game_state *game, int dx, int dy);
 void rotate_mino(game_state *game, int dir);
 
