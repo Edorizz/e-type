@@ -21,12 +21,24 @@
 #define TETRIS_H
 
 /* Standard Tetris board dimensions */
-#define BOARD_HEIGHT	20
-#define BOARD_WIDTH	10
+#define BOARD_HEIGHT		20
+#define BOARD_WIDTH		10
+
+#define CLOCKWISE		0
+#define COUNTER_CLOCKWISE	1
+
+#define RESET			0
+#define RED 			1
+#define GREEN 			2
+#define YELLOW 			3
+#define BLUE 			4
+#define MAGENTA			5
+#define CYAN 			6
+#define WHITE 			7
 
 /* Bit flags */
-#define QUIT		0
-#define DRAW		1
+#define QUIT			0
+#define DRAW			1
 
 /* Bit manipulation */
 #define BIT(n)		(1 << n)
@@ -35,17 +47,30 @@
 #include <ncurses.h>
 
 typedef struct {
-	uint8_t x, y;
+	int x, y;
 } point;
+
+typedef struct {
+	char block_left, block_right;
+	point block_pos[4];
+	point pivot;
+	int color;
+	uint8_t flags;
+} tetromino;
 
 typedef struct {
 	uint8_t board[BOARD_HEIGHT][BOARD_WIDTH];
 	uint8_t flags;
-	point current_mino;
+	tetromino mino;
+	point mino_pos;
 } game_state;
 
 void new_game(game_state *game);
 void draw_board(game_state *game);
+
+void spawn_mino(game_state *game);
+void clear_mino(game_state *game);
 void move_mino(game_state *game, int dx, int dy);
+void rotate_mino(game_state *game, int dir);
 
 #endif /* TETRIS_H */

@@ -18,20 +18,22 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
+#include <time.h>
 
 #include "tetris.h"
+
+void init_ncurses(void);
 
 int
 main(int argc, char **argv)
 {
 	game_state game;
 
-	/* Initialize ncurses */
-	initscr();
-	cbreak();
-	noecho();
-	timeout(0);
+	init_ncurses();
+
+	srand(time(NULL));
 
 	new_game(&game);
 	/* Game loop */
@@ -53,6 +55,10 @@ main(int argc, char **argv)
 		case 'd':
 			move_mino(&game, 1, 0);
 			break;
+		case 'R':
+		case 'r':
+			spawn_mino(&game);
+			break;
 		case 'Q':
 		case 'q':
 			game.flags |= BIT(QUIT);
@@ -61,11 +67,32 @@ main(int argc, char **argv)
 
 		if (game.flags & BIT(DRAW)) {
 			draw_board(&game);
+			game.flags ^= BIT(DRAW);
+
 			refresh();
 		}
 	}
 	
 	endwin();
 	return 0;
+}
+
+void
+init_ncurses(void)
+{
+	initscr();
+	cbreak();
+	noecho();
+	timeout(0);
+
+	/* Init color */
+	start_color();
+	init_pair(RED, COLOR_RED, COLOR_BLACK);
+	init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
+	init_pair(YELLOW, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
+	init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
+	init_pair(CYAN, COLOR_CYAN, COLOR_BLACK);
+	init_pair(WHITE, COLOR_WHITE, COLOR_BLACK);
 }
 

@@ -21,24 +21,73 @@
 #include "tetris.h"
 /* C library */
 #include <string.h>
+#include <stdlib.h>
 
+const tetromino minos[7] = { { '<', '>',
+			       { { 0, 0 }, { 0, 1 },
+				 { 0, 2 }, { 0, 3 } },
+			       { 0, 0 },
+			       RED,
+			       0 },
+			     
+			     { '{', '}',
+			       { { 0, 0 }, { 0, 1 },
+				 { 0, 2 }, { 1, 2 } },
+			       { 0, 0 },
+			       GREEN,
+			       0 },
+			     
+			     { '(', ')',
+			       { { 1, 0 }, { 1, 1 },
+				 { 1, 2 }, { 0, 2 } },
+			       { 0, 0 },
+			       YELLOW,
+			       0 },
+			     
+			     { '[', ']',
+			       { { 0, 0 }, { 1, 0 },
+				 { 0, 1 }, { 1, 1 } },
+			       { 0, 0 },
+			       BLUE,
+			       0 },
+			     
+			     { '%', '%',
+			       { { 0, 0 }, { 1, 0 },
+				 { 0, 1 }, { -1, 1 } },
+			       { 0, 0 },
+			       MAGENTA,
+			       0 },
+			     
+			     { '@', '@',
+			       { { 0, 0 }, { -1, 0 },
+				 { 0, 1 }, { 1, 1 } },
+			       { 0, 0 },
+			       CYAN,
+			       0 },
+			     
+			     { '#', '#',
+			       { { 0, 0 }, { -1, 0 },
+				 { 1, 0 }, { 0, 1 } },
+			       { 0, 0 },
+			       WHITE,
+			       0 } };
+	
 void
 new_game(game_state *game)
 {
 	memset(game->board[0], 0, sizeof(game->board));
 	game->flags = BIT(DRAW);
 
-	game->current_mino.x = BOARD_WIDTH / 2;
-	game->current_mino.y = 0;
-	game->board[current_mino.y][current_mino.x] = 1;
+	spawn_mino(game);
 }
 
 void
 draw_board(game_state *game)
 {
-	int i, j;
+	int i, j, x, y;
 
-	mvprintw(0, 0, " --------------------\n");
+	/* Draw board */
+	mvprintw(0, 0, "*--------------------*\n");
 	for (i = 0; i != BOARD_HEIGHT; ++i) {
 		addch('|');
 		for (j = 0; j != BOARD_WIDTH; ++j) {
@@ -46,26 +95,60 @@ draw_board(game_state *game)
 		}
 		printw("|\n");
 	}
-	printw(" --------------------");
+	printw("*--------------------*");
+
+	/* Draw current tetromino */
+	attron(COLOR_PAIR(game->mino.color));
+	for (i = 0; i != 4; ++i) {
+		x = 1 + (game->mino_pos.x + game->mino.block_pos[i].x) * 2;
+		y = 1 + game->mino_pos.y + game->mino.block_pos[i].y;
+
+		mvaddch(y, x, game->mino.block_left);
+		mvaddch(y, x + 1, game->mino.block_right);
+	}
+	attroff(COLOR_PAIR(game->mino.color));
+}
+
+void
+spawn_mino(game_state *game)
+{
+	game->mino_pos.x = BOARD_WIDTH / 2;
+	game->mino_pos.y = BOARD_HEIGHT / 2;
+
+	game->flags |= BIT(DRAW);
+
+	memcpy(&game->mino, &minos[rand() % 7], sizeof(tetromino));
+}
+
+void
+clear_mino(game_state *game)
+{
+	int i;
+
+	for (i = 0; i != 4; ++i) {
+		game->board[game->mino_pos.y + game->mino.block_pos[i].y]
+			[game->mino_pos.x + game->mino.block_pos[i].x] = 0;
+	}
 }
 
 void
 move_mino(game_state *game, int dx, int dy)
 {
-	dx += game->current_mino.x;
-	dy += game->current_mino.y;
+	int i, x, y;
 
-	/* Check if moving mino causes it to go out of bounds */
-	if (dx < 0 || dx >= BOARD_WIDTH ||
-	    dy < 0 || dy >= BOARD_HEIGHT) {
-		return;
+	for (i = 0; i != 4; ++i) {
+		x = game->mino_pos.x + game->mino.block_pos[i].x + dx;
+		y = game->mino_pos.y + game->mino.block_pos[i].y + dy;
+		
+		/* Check if moving mino causes it to go out of bounds */
+		if (x < 0 || x >= BOARD_WIDTH ||
+		    y < 0 || y >= BOARD_HEIGHT) {
+			return;
+		}
 	}
-
-	/* Move mino */
-	game->board[game->current_mino.y][game->current_mino.x] = 0;
-	game->current_mino.x = dx;
-	game->current_mino.y = dy;
-	game->board[game->current_mino.y][game->current_mino.x] = 1;
+		
+	game->mino_pos.x += dx;
+	game->mino_pos.y += dy;
 
 	game->flags |= BIT(DRAW);
 }
