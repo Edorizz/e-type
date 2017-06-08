@@ -55,6 +55,10 @@ main(int argc, char **argv)
 		case 'd':
 			move_mino(&game, 1, 0);
 			break;
+		case 'E':
+		case 'e':
+			rotate_mino(&game, 1);
+			break;
 		case 'R':
 		case 'r':
 			spawn_mino(&game);

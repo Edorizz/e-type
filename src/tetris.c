@@ -33,14 +33,14 @@ const tetromino minos[7] = { { '<', '>',
 			     { '{', '}',
 			       { { 0, 0 }, { 0, 1 },		/* L */
 				 { 0, 2 }, { 1, 2 } },
-			       { 0, 0 },
+			       { 0, 1 },
 			       GREEN,
 			       0 },
 			     
 			     { '(', ')',
 			       { { 1, 0 }, { 1, 1 },		/* J */
 				 { 1, 2 }, { 0, 2 } },
-			       { 0, 0 },
+			       { 0, 1 },
 			       YELLOW,
 			       0 },
 			     
@@ -151,6 +151,9 @@ clear_lines(game_state *game)
 			for (j = i - 1; j >= 0; --j) {
 				line_down(game, j);
 			}
+
+			++i;
+			continue;
 		}
 	}
 }
@@ -163,7 +166,7 @@ spawn_mino(game_state *game)
 
 	game->flags |= BIT(DRAW);
 
-	memcpy(&game->mino, &minos[], sizeof(tetromino));
+	memcpy(&game->mino, &minos[rand() % 7], sizeof(tetromino));
 }
 
 void
@@ -194,6 +197,47 @@ move_mino(game_state *game, int dx, int dy)
 	game->mino_pos.x += dx;
 	game->mino_pos.y += dy;
 
+	game->flags |= BIT(DRAW);
+}
+
+void
+rotate_mino(game_state *game, int dir)
+{
+	tetromino tmp;
+	point *p;
+	int abs_x, abs_y, z;
+
+	memcpy(&tmp, &game->mino, sizeof(tetromino));
+	
+	for (int i = 0; i != 4; ++i) {
+		p = &tmp.block_pos[i];
+		p->x -= tmp.pivot.x;
+		p->y -= tmp.pivot.y;
+
+		if (p->x && !p->y) {
+			p->y = p->x;
+			p->x = 0;
+		} else if (!p->x && p->y) {
+			p->x = -p->y;
+			p->y = 0;
+		} else if (p->x && p->y) {
+			z = p->x;
+			p->x = -p->y;
+			p->y = z;
+		}
+
+		p->x += tmp.pivot.x;
+		p->y += tmp.pivot.y;
+
+		abs_x = p->x + game->mino_pos.x;
+		abs_y = p->y + game->mino_pos.y;
+
+		if (!in_range(abs_x, abs_y) || game->board[abs_y][abs_x]) {
+			return;
+		}
+	}
+
+	memcpy(&game->mino, &tmp, sizeof(tetromino));
 	game->flags |= BIT(DRAW);
 }
 
