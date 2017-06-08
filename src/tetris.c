@@ -24,49 +24,49 @@
 #include <stdlib.h>
 
 const tetromino minos[7] = { { '<', '>',
-			       { { 0, 0 }, { 0, 1 },
+			       { { 0, 0 }, { 0, 1 },		/* I */
 				 { 0, 2 }, { 0, 3 } },
 			       { 0, 0 },
 			       RED,
 			       0 },
 			     
 			     { '{', '}',
-			       { { 0, 0 }, { 0, 1 },
+			       { { 0, 0 }, { 0, 1 },		/* L */
 				 { 0, 2 }, { 1, 2 } },
 			       { 0, 0 },
 			       GREEN,
 			       0 },
 			     
 			     { '(', ')',
-			       { { 1, 0 }, { 1, 1 },
+			       { { 1, 0 }, { 1, 1 },		/* J */
 				 { 1, 2 }, { 0, 2 } },
 			       { 0, 0 },
 			       YELLOW,
 			       0 },
 			     
 			     { '[', ']',
-			       { { 0, 0 }, { 1, 0 },
+			       { { 0, 0 }, { 1, 0 },		/* O */
 				 { 0, 1 }, { 1, 1 } },
 			       { 0, 0 },
 			       BLUE,
 			       0 },
 			     
 			     { '%', '%',
-			       { { 0, 0 }, { 1, 0 },
+			       { { 0, 0 }, { 1, 0 },		/* S */
 				 { 0, 1 }, { -1, 1 } },
 			       { 0, 0 },
 			       MAGENTA,
 			       0 },
 			     
 			     { '@', '@',
-			       { { 0, 0 }, { -1, 0 },
+			       { { 0, 0 }, { -1, 0 },		/* Z */
 				 { 0, 1 }, { 1, 1 } },
 			       { 0, 0 },
 			       CYAN,
 			       0 },
 			     
 			     { '#', '#',
-			       { { 0, 0 }, { -1, 0 },
+			       { { 0, 0 }, { -1, 0 },		/* T */
 				 { 1, 0 }, { 0, 1 } },
 			       { 0, 0 },
 			       WHITE,
@@ -128,6 +128,34 @@ in_range(int x, int y)
 }
 
 void
+line_down(game_state *game, int y)
+{
+	int i;
+
+	for (i = 0; i != BOARD_WIDTH; ++i) {
+		game->board[y + 1][i] = game->board[y][i];
+		game->board[y][i] = 0;
+	}
+}
+
+void
+clear_lines(game_state *game)
+{
+	int i, j;
+
+	for (i = BOARD_HEIGHT - 1; i >= 0; --i) {
+		for (j = 0; j != BOARD_WIDTH && game->board[i][j]; ++j)
+			;
+
+		if (j == BOARD_WIDTH) {
+			for (j = i - 1; j >= 0; --j) {
+				line_down(game, j);
+			}
+		}
+	}
+}
+
+void
 spawn_mino(game_state *game)
 {
 	game->mino_pos.x = BOARD_WIDTH / 2;
@@ -135,7 +163,7 @@ spawn_mino(game_state *game)
 
 	game->flags |= BIT(DRAW);
 
-	memcpy(&game->mino, &minos[rand() % 7], sizeof(tetromino));
+	memcpy(&game->mino, &minos[], sizeof(tetromino));
 }
 
 void
@@ -156,6 +184,7 @@ move_mino(game_state *game, int dx, int dy)
 					game->board[game->mino.block_pos[i].y + game->mino_pos.y]
 						[game->mino.block_pos[i].x + game->mino_pos.x] = game->mino.color;
 				}
+				clear_lines(game);
 				spawn_mino(game);
 			}
 			return;
