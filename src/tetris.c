@@ -26,7 +26,7 @@
 const tetromino minos[7] = { { '<', '>',
 			       { { 0, 0 }, { 0, 1 },		/* I */
 				 { 0, 2 }, { 0, 3 } },
-			       { 0, 0 },
+			       { 0, 2 },
 			       RED,
 			       0 },
 			     
@@ -40,7 +40,7 @@ const tetromino minos[7] = { { '<', '>',
 			     { '(', ')',
 			       { { 1, 0 }, { 1, 1 },		/* J */
 				 { 1, 2 }, { 0, 2 } },
-			       { 0, 1 },
+			       { 1, 1 },
 			       YELLOW,
 			       0 },
 			     
@@ -214,16 +214,14 @@ rotate_mino(game_state *game, int dir)
 		p->x -= tmp.pivot.x;
 		p->y -= tmp.pivot.y;
 
-		if (p->x && !p->y) {
-			p->y = p->x;
-			p->x = 0;
-		} else if (!p->x && p->y) {
-			p->x = -p->y;
-			p->y = 0;
-		} else if (p->x && p->y) {
+		if (dir == CLOCKWISE) {
 			z = p->x;
 			p->x = -p->y;
 			p->y = z;
+		} else if (dir == COUNTER_CLOCKWISE) {
+			z = p->y;
+			p->y = -p->x;
+			p->x = z;
 		}
 
 		p->x += tmp.pivot.x;
