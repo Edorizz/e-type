@@ -31,15 +31,15 @@ const tetromino minos[7] = { { '<', '>',
 			       BIT(ROTATE_TWICE) },
 			     
 			     { '{', '}',
-			       { { 0, 0 }, { 0, 1 },		/* L */
-				 { 0, 2 }, { 1, 2 } },
+			       { { -1, 0 }, { 0, 0 },		/* L */
+				 { 1, 0 }, { -1, 1 } },
 			       { 0, 1 },
 			       GREEN,
 			       0 },
 			     
 			     { '(', ')',
-			       { { 1, 0 }, { 1, 1 },		/* J */
-				 { 1, 2 }, { 0, 2 } },
+			       { { -1, 0 }, { 0, 0 },		/* J */
+				 { 1, 0 }, { 1, 1 } },
 			       { 1, 1 },
 			       YELLOW,
 			       0 },
@@ -75,7 +75,7 @@ const tetromino minos[7] = { { '<', '>',
 void
 new_game(game_state *game)
 {
-	memset(game->board[0], 0, sizeof(game->board));
+	memset(game, 0, sizeof(game_state));
 	game->flags = BIT(DRAW);
 
 	spawn_mino(game);
@@ -102,7 +102,12 @@ draw_board(game_state *game)
 		}
 		printw("|\n");
 	}
-	printw("*--------------------*");
+	printw("*--------------------*\n");
+
+	/* Draw statistics */
+	mvprintw(1, BOARD_WIDTH * 2 + 3, "lines: %d\n", game->lines);
+	mvprintw(2, BOARD_WIDTH * 2 + 3, "level: %d\n", game->level);
+	mvprintw(3, BOARD_WIDTH * 2 + 3, "score: %d\n", game->score);
 
 	/* Draw current tetromino */
 	attron(COLOR_PAIR(game->mino.color));
@@ -141,8 +146,9 @@ line_down(game_state *game, int y)
 void
 clear_lines(game_state *game)
 {
-	int i, j;
+	int i, j, lines;
 
+	lines = 0;
 	for (i = BOARD_HEIGHT - 1; i >= 0; --i) {
 		for (j = 0; j != BOARD_WIDTH && game->board[i][j]; ++j)
 			;
@@ -153,16 +159,39 @@ clear_lines(game_state *game)
 			}
 
 			++i;
+			++lines;
 			continue;
 		}
 	}
+
+	switch (lines) {
+	case 1:
+		i = 40;
+		break;
+	case 2:
+		i = 100;
+		break;
+	case 3:
+		i = 300;
+		break;
+	case 4:
+		i = 1200;
+		break;
+	default:
+		i = 0;
+		break;
+	}
+
+	game->score += (game->level + 1) * i;
+	game->lines += lines;
+	game->level = game->lines / 10;
 }
 
 void
 spawn_mino(game_state *game)
 {
-	game->mino_pos.x = BOARD_WIDTH / 2;
-	game->mino_pos.y = -2;
+	game->mino_pos.x = (BOARD_WIDTH - 1) / 2;
+	game->mino_pos.y = 0;
 
 	game->flags |= BIT(DRAW);
 
@@ -189,9 +218,16 @@ move_mino(game_state *game, int dx, int dy)
 				}
 				clear_lines(game);
 				spawn_mino(game);
+
+				game->score += game->drop_score;
+				game->drop_score = 0;
 			}
 			return;
 		}
+	}
+
+	if (dy == 1) {
+		++game->drop_score;
 	}
 		
 	game->mino_pos.x += dx;
@@ -206,7 +242,6 @@ rotate_mino(game_state *game, int dir)
 	tetromino tmp;
 	point *p;
 	int abs_x, abs_y, z;
-	static int rot;
 
 	if (game->mino.flags & BIT(ROTATE_NONE)) {
 		return;

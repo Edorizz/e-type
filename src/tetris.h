@@ -66,6 +66,10 @@ typedef struct {
 typedef struct {
 	uint8_t board[BOARD_HEIGHT][BOARD_WIDTH];
 	uint8_t flags;
+	uint8_t level;
+	uint32_t lines;
+	uint32_t score;
+	uint32_t drop_score;
 	tetromino mino;
 	point mino_pos;
 } game_state;
