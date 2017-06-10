@@ -33,14 +33,14 @@ const tetromino minos[7] = { { '<', '>',
 			     { '{', '}',
 			       { { -1, 0 }, { 0, 0 },		/* L */
 				 { 1, 0 }, { -1, 1 } },
-			       { 0, 1 },
+			       { 0, 0 },
 			       GREEN,
 			       0 },
 			     
 			     { '(', ')',
 			       { { -1, 0 }, { 0, 0 },		/* J */
 				 { 1, 0 }, { 1, 1 } },
-			       { 1, 1 },
+			       { 0, 0 },
 			       YELLOW,
 			       0 },
 			     
@@ -115,7 +115,7 @@ draw_board(game_state *game)
 		x = game->mino_pos.x + game->mino.block_pos[i].x;
 		y = game->mino_pos.y + game->mino.block_pos[i].y;
 
-		if (in_range(x, y)) {
+		if (in_range(x, y) && y >= 0) {
 			x = x * 2 + 1;
 			++y;
 			
@@ -129,7 +129,7 @@ draw_board(game_state *game)
 int
 in_range(int x, int y)
 {
-	return x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT;
+	return x >= 0 && x < BOARD_WIDTH && y < BOARD_HEIGHT;
 }
 
 void
@@ -208,7 +208,7 @@ move_mino(game_state *game, int dx, int dy)
 		y = game->mino_pos.y + game->mino.block_pos[i].y;
 		
 		/* Check if moving mino causes it to go out of bounds */
-		if (!in_range(x + dx, 0) || y + dy >= BOARD_HEIGHT ||
+		if (!in_range(x + dx, y + dy) ||
 		    (y >= 0 && game->board[y + dy][x + dx] && !game->board[y][x]) ||
 		    dy == -1) {
 			if (dx == 0 && dy == 1) {
