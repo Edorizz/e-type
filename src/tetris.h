@@ -20,13 +20,7 @@
 #ifndef TETRIS_H
 #define TETRIS_H
 
-/* Standard Tetris board dimensions */
-#define BOARD_HEIGHT		20
-#define BOARD_WIDTH		10
-
-#define CLOCKWISE		0
-#define COUNTER_CLOCKWISE	1
-
+/* Ncurses colors */
 #define RESET			0
 #define RED 			1
 #define GREEN 			2
@@ -35,6 +29,15 @@
 #define MAGENTA			5
 #define CYAN 			6
 #define WHITE 			7
+
+/* Standard Tetris */
+#define BOARD_HEIGHT		20
+#define BOARD_WIDTH		10
+#define INITIAL_SPEED		48
+
+/* Rotation */
+#define CLOCKWISE		0
+#define COUNTER_CLOCKWISE	1
 
 /* Game state flags */
 #define QUIT			0
@@ -45,10 +48,15 @@
 #define ROTATE_NONE		1
 #define ROTATE_TWICE		2
 
+/* Tetromino movement/rotation status */
+#define SUCCESS			1
+#define FAILURE			0
+
 /* Bit manipulation */
 #define BIT(n)			(1 << n)
 
 #include <stdint.h>
+#include <time.h>
 #include <ncurses.h>
 
 typedef struct {
@@ -64,25 +72,32 @@ typedef struct {
 } tetromino;
 
 typedef struct {
+	/* Game state */
 	uint8_t board[BOARD_HEIGHT][BOARD_WIDTH];
 	uint8_t flags;
+	tetromino mino;
+	point mino_pos;
+	/* Score */
 	uint8_t level;
 	uint32_t lines;
 	uint32_t score;
 	uint32_t drop_score;
-	tetromino mino;
-	point mino_pos;
+	/* Timing */
+	clock_t clock;
+	double fpc;
 } game_state;
 
 void new_game(game_state *game);
 void draw_board(game_state *game);
+void update_timing(game_state *game);
 
 int  in_range(int x, int y);
 void line_down(game_state *game, int y);
 void clear_lines(game_state *game);
 
 void spawn_mino(game_state *game);
-void move_mino(game_state *game, int dx, int dy);
-void rotate_mino(game_state *game, int dir);
+int  move_mino(game_state *game, int dx, int dy);
+int  rotate_mino(game_state *game, int dir);
 
 #endif /* TETRIS_H */
+

@@ -23,6 +23,21 @@
 #include <string.h>
 #include <stdlib.h>
 
+/*
+ * This gets applied to the standard Tetris scoring formula
+ * '(n * 1) + score_mult[i - 1]' where 'n' is the current level and 'i' the
+ * number of lines broken.
+ */
+const int score_mult[4] = { 40, 100, 300, 1200 };
+
+/*
+ * Tetromino specific information, which includes (in order):
+ *	- Characters used for opening and closing mino blocks.
+ *	- Block coordinates.
+ *	- Pivot point.
+ *	- Color.
+ *	- Special flags. (Mainly rotation)
+ */
 const tetromino minos[7] = { { '<', '>',
 			       { { 0, 0 }, { 0, 1 },		/* I */
 				 { 0, 2 }, { 0, 3 } },
@@ -76,7 +91,9 @@ void
 new_game(game_state *game)
 {
 	memset(game, 0, sizeof(game_state));
+	game->clock = clock();
 	game->flags = BIT(DRAW);
+	game->fpc = INITIAL_SPEED;
 
 	spawn_mino(game);
 }
@@ -126,6 +143,17 @@ draw_board(game_state *game)
 	attroff(COLOR_PAIR(game->mino.color));
 }
 
+void
+update_timing(game_state *game)
+{
+	if ((double)(clock() - game->clock) / CLOCKS_PER_SEC > (game->fpc / 60.0)) {
+		game->clock = clock();
+		if (move_mino(game, 0, 1) == SUCCESS) {
+			--game->drop_score;
+		}
+	}
+}
+
 int
 in_range(int x, int y)
 {
@@ -164,27 +192,11 @@ clear_lines(game_state *game)
 		}
 	}
 
-	switch (lines) {
-	case 1:
-		i = 40;
-		break;
-	case 2:
-		i = 100;
-		break;
-	case 3:
-		i = 300;
-		break;
-	case 4:
-		i = 1200;
-		break;
-	default:
-		i = 0;
-		break;
+	if (lines) {
+		game->score += (game->level + 1) * score_mult[lines - 1];
+		game->lines += lines;
+		game->level = game->lines / 10;
 	}
-
-	game->score += (game->level + 1) * i;
-	game->lines += lines;
-	game->level = game->lines / 10;
 }
 
 void
@@ -198,7 +210,7 @@ spawn_mino(game_state *game)
 	memcpy(&game->mino, &minos[rand() % 7], sizeof(tetromino));
 }
 
-void
+int
 move_mino(game_state *game, int dx, int dy)
 {
 	int i, x, y;
@@ -211,18 +223,38 @@ move_mino(game_state *game, int dx, int dy)
 		if (!in_range(x + dx, y + dy) ||
 		    (y >= 0 && game->board[y + dy][x + dx] && !game->board[y][x]) ||
 		    dy == -1) {
+			/* If collided with something while going downwards */
 			if (dx == 0 && dy == 1) {
 				for (i = 0; i != 4; ++i) {
 					game->board[game->mino.block_pos[i].y + game->mino_pos.y]
 						[game->mino.block_pos[i].x + game->mino_pos.x] = game->mino.color;
 				}
+
 				clear_lines(game);
 				spawn_mino(game);
 
 				game->score += game->drop_score;
 				game->drop_score = 0;
+
+				/* Update falling speed */
+				if (game->level <= 8) {
+					game->fpc = 48 - (game->level * 5);
+				} else if (game->level == 9) {
+					game->fpc = 6;
+				} else if (game->level <= 12) {
+					game->fpc = 5;
+				} else if (game->level <= 15) {
+					game->fpc = 4;
+				} else if (game->level <= 18) {
+					game->fpc = 3;
+				} else if (game->level <= 28) {
+					game->fpc = 2;
+				} else {
+					game->fpc = 1;
+				}
 			}
-			return;
+
+			return FAILURE;
 		}
 	}
 
@@ -234,9 +266,11 @@ move_mino(game_state *game, int dx, int dy)
 	game->mino_pos.y += dy;
 
 	game->flags |= BIT(DRAW);
+
+	return SUCCESS;
 }
 
-void
+int
 rotate_mino(game_state *game, int dir)
 {
 	tetromino tmp;
@@ -244,7 +278,7 @@ rotate_mino(game_state *game, int dir)
 	int abs_x, abs_y, z;
 
 	if (game->mino.flags & BIT(ROTATE_NONE)) {
-		return;
+		return FAILURE;
 	}
 
 	memcpy(&tmp, &game->mino, sizeof(tetromino));
@@ -276,11 +310,13 @@ rotate_mino(game_state *game, int dir)
 		abs_y = p->y + game->mino_pos.y;
 
 		if (!in_range(abs_x, abs_y) || game->board[abs_y][abs_x]) {
-			return;
+			return FAILURE;
 		}
 	}
 
 	memcpy(&game->mino, &tmp, sizeof(tetromino));
 	game->flags |= BIT(DRAW);
+
+	return SUCCESS;
 }
 

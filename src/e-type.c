@@ -38,6 +38,8 @@ main(int argc, char **argv)
 	new_game(&game);
 	/* Game loop */
 	while (!(game.flags & BIT(QUIT))) {
+		update_timing(&game);
+
 		switch (getch()) {
 		case 'W':
 		case 'w':
