@@ -28,7 +28,7 @@ const tetromino minos[7] = { { '<', '>',
 				 { 0, 2 }, { 0, 3 } },
 			       { 0, 2 },
 			       RED,
-			       0 },
+			       BIT(ROTATE_TWICE) },
 			     
 			     { '{', '}',
 			       { { 0, 0 }, { 0, 1 },		/* L */
@@ -49,21 +49,21 @@ const tetromino minos[7] = { { '<', '>',
 				 { 0, 1 }, { 1, 1 } },
 			       { 0, 0 },
 			       BLUE,
-			       0 },
+			       BIT(ROTATE_NONE) },
 			     
 			     { '%', '%',
 			       { { 0, 0 }, { 1, 0 },		/* S */
 				 { 0, 1 }, { -1, 1 } },
 			       { 0, 0 },
 			       MAGENTA,
-			       0 },
+			       BIT(ROTATE_TWICE) },
 			     
 			     { '@', '@',
 			       { { 0, 0 }, { -1, 0 },		/* Z */
 				 { 0, 1 }, { 1, 1 } },
 			       { 0, 0 },
 			       CYAN,
-			       0 },
+			       BIT(ROTATE_TWICE) },
 			     
 			     { '#', '#',
 			       { { 0, 0 }, { -1, 0 },		/* T */
@@ -206,9 +206,19 @@ rotate_mino(game_state *game, int dir)
 	tetromino tmp;
 	point *p;
 	int abs_x, abs_y, z;
+	static int rot;
+
+	if (game->mino.flags & BIT(ROTATE_NONE)) {
+		return;
+	}
 
 	memcpy(&tmp, &game->mino, sizeof(tetromino));
-	
+
+	if (game->mino.flags & BIT(ROTATE_TWICE)) {
+		dir = tmp.flags & BIT(ROTATION);
+		tmp.flags ^= BIT(ROTATION);
+	}
+
 	for (int i = 0; i != 4; ++i) {
 		p = &tmp.block_pos[i];
 		p->x -= tmp.pivot.x;

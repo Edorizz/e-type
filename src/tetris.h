@@ -36,9 +36,14 @@
 #define CYAN 			6
 #define WHITE 			7
 
-/* Bit flags */
+/* Game state flags */
 #define QUIT			0
 #define DRAW			1
+
+/* Tetromino flags */
+#define ROTATION		0
+#define ROTATE_NONE		1
+#define ROTATE_TWICE		2
 
 /* Bit manipulation */
 #define BIT(n)			(1 << n)
