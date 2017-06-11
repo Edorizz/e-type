@@ -102,7 +102,27 @@ new_game(game_state *game)
 	game->flags = BIT(DRAW);
 	game->fpc = INITIAL_SPEED;
 
+	if (game->scores = fopen(HI_SCORES, "rb")) {
+		fread(&game->hi_score, sizeof(game->hi_score), 1, game->scores);
+		fclose(game->scores);
+	}
+
 	spawn_mino(game);
+}
+
+void
+game_over(game_state *game)
+{
+	if (game->score > game->hi_score) {
+		game->hi_score = game->score;
+	}
+
+	if (game->scores = fopen(HI_SCORES, "wb")) {
+		fwrite(&game->hi_score, sizeof(game->hi_score), 1, game->scores);
+		fclose(game->scores);
+	}
+
+	game->flags |= BIT(QUIT);
 }
 
 void
@@ -129,13 +149,14 @@ draw_board(game_state *game)
 	printw("*--------------------*\n");
 
 	/* Draw statistics */
-	mvprintw(1, BOARD_WIDTH * 2 + 3, "lines: %d\n", game->lines);
-	mvprintw(2, BOARD_WIDTH * 2 + 3, "level: %d\n", game->level);
-	mvprintw(3, BOARD_WIDTH * 2 + 3, "score: %d\n", game->score);
+	mvprintw(1, BOARD_WIDTH * 2 + 3, "score: %d\n", game->score);
+	mvprintw(2, BOARD_WIDTH * 2 + 3, "hi-score: %d\n", game->hi_score);
+	mvprintw(4, BOARD_WIDTH * 2 + 3, "lines: %d\n", game->lines);
+	mvprintw(5, BOARD_WIDTH * 2 + 3, "level: %d\n", game->level);
 
 	for (i = 0; i != 7; ++i) {
 		attron(COLOR_PAIR(minos[i].color));
-		mvprintw(5 + i, BOARD_WIDTH * 2 + 3, "%c%c%c:\t%d",
+		mvprintw(7 + i, BOARD_WIDTH * 2 + 3, "%c%c%c:\t%d",
 			 minos[i].block_left, minos[i].symbol , minos[i].block_right,
 			 game->mino_count[i]);
 		attroff(COLOR_PAIR(minos[i].color));
@@ -169,7 +190,8 @@ update_timing(game_state *game)
 	}
 }
 
-int in_range(int x, int y)
+int
+in_range(int x, int y)
 {
 	return x >= 0 && x < BOARD_WIDTH && y < BOARD_HEIGHT;
 }
@@ -191,10 +213,12 @@ clear_lines(game_state *game)
 	int i, j, lines;
 
 	lines = 0;
+	/* Loop though all lines in the board */
 	for (i = BOARD_HEIGHT - 1; i >= 0; --i) {
 		for (j = 0; j != BOARD_WIDTH && game->board[i][j]; ++j)
 			;
 
+		/* If a full line was found, clear it and move all lines above it down by 1 */
 		if (j == BOARD_WIDTH) {
 			for (j = i - 1; j >= 0; --j) {
 				line_down(game, j);
@@ -206,6 +230,7 @@ clear_lines(game_state *game)
 		}
 	}
 
+	/* If at least 1 line was cleared, update score */
 	if (lines) {
 		game->score += (game->level + 1) * score_mult[lines - 1];
 		game->lines += lines;
@@ -218,14 +243,23 @@ spawn_mino(game_state *game)
 {
 	int r;
 
+	/* Initial tetromino position */
 	game->mino_pos.x = (BOARD_WIDTH - 1) / 2;
 	game->mino_pos.y = 0;
 
-	game->flags |= BIT(DRAW);
-
+	/* Choose random tetromino */
 	r = rand() % 7;
 	memcpy(&game->mino, &minos[r], sizeof(tetromino));
 	++game->mino_count[r];
+
+	/* Quit game if spawn location is already occupied. (calling move_mino(game, 0, 0) might be better) */
+	for (r = 0; r != 4; ++r) {
+		if (game->board[game->mino.block_pos[r].y + game->mino_pos.y][game->mino.block_pos[r].x + game->mino_pos.x]) {
+			game_over(game);
+		}
+	}
+
+	game->flags |= BIT(DRAW);
 }
 
 int
@@ -257,14 +291,8 @@ move_mino(game_state *game, int dx, int dy)
 				/* Update falling speed */
 				if (game->level <= 8) {
 					game->fpc = 48 - (game->level * 5);
-				} else if (game->level == 9) {
-					game->fpc = 6;
-				} else if (game->level <= 12) {
-					game->fpc = 5;
-				} else if (game->level <= 15) {
-					game->fpc = 4;
 				} else if (game->level <= 18) {
-					game->fpc = 3;
+					game->fpc = 9 - (game->level / 3);
 				} else if (game->level <= 28) {
 					game->fpc = 2;
 				} else {

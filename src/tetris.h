@@ -55,6 +55,10 @@
 /* Bit manipulation */
 #define BIT(n)			(1 << n)
 
+/* Special directories */
+#define HI_SCORES		"e-type.dat"
+
+
 #include <stdint.h>
 #include <time.h>
 #include <ncurses.h>
@@ -82,14 +86,18 @@ typedef struct {
 	uint8_t level;
 	uint32_t mino_count[7];
 	uint32_t lines;
+	uint32_t hi_score;
 	uint32_t score;
 	uint32_t drop_score;
 	/* Timing */
 	clock_t clock;
 	double fpc;
+	/* Extra */
+	FILE *scores;
 } game_state;
 
 void new_game(game_state *game);
+void game_over(game_state *game);
 void draw_board(game_state *game);
 void update_timing(game_state *game);
 void fill_mino_bag(game_state *game);

@@ -71,7 +71,7 @@ main(int argc, char **argv)
 			break;
 		case 'Q':
 		case 'q':
-			game.flags |= BIT(QUIT);
+			game_over(&game);
 			break;
 		}
 
