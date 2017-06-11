@@ -39,6 +39,7 @@ const int score_mult[4] = { 40, 100, 300, 1200 };
  *	- Special flags. (Mainly rotation)
  */
 const tetromino minos[7] = { { '<', '>',
+			       'I',
 			       { { 0, 0 }, { 0, 1 },		/* I */
 				 { 0, 2 }, { 0, 3 } },
 			       { 0, 2 },
@@ -46,6 +47,7 @@ const tetromino minos[7] = { { '<', '>',
 			       BIT(ROTATE_TWICE) },
 			     
 			     { '{', '}',
+			       'L',
 			       { { -1, 0 }, { 0, 0 },		/* L */
 				 { 1, 0 }, { -1, 1 } },
 			       { 0, 0 },
@@ -53,6 +55,7 @@ const tetromino minos[7] = { { '<', '>',
 			       0 },
 			     
 			     { '(', ')',
+			       'J',
 			       { { -1, 0 }, { 0, 0 },		/* J */
 				 { 1, 0 }, { 1, 1 } },
 			       { 0, 0 },
@@ -60,6 +63,7 @@ const tetromino minos[7] = { { '<', '>',
 			       0 },
 			     
 			     { '[', ']',
+			       'O',
 			       { { 0, 0 }, { 1, 0 },		/* O */
 				 { 0, 1 }, { 1, 1 } },
 			       { 0, 0 },
@@ -67,6 +71,7 @@ const tetromino minos[7] = { { '<', '>',
 			       BIT(ROTATE_NONE) },
 			     
 			     { '%', '%',
+			       'S',
 			       { { 0, 0 }, { 1, 0 },		/* S */
 				 { 0, 1 }, { -1, 1 } },
 			       { 0, 0 },
@@ -74,6 +79,7 @@ const tetromino minos[7] = { { '<', '>',
 			       BIT(ROTATE_TWICE) },
 			     
 			     { '@', '@',
+			       'Z',
 			       { { 0, 0 }, { -1, 0 },		/* Z */
 				 { 0, 1 }, { 1, 1 } },
 			       { 0, 0 },
@@ -81,6 +87,7 @@ const tetromino minos[7] = { { '<', '>',
 			       BIT(ROTATE_TWICE) },
 			     
 			     { '#', '#',
+			       'T',
 			       { { 0, 0 }, { -1, 0 },		/* T */
 				 { 1, 0 }, { 0, 1 } },
 			       { 0, 0 },
@@ -126,6 +133,14 @@ draw_board(game_state *game)
 	mvprintw(2, BOARD_WIDTH * 2 + 3, "level: %d\n", game->level);
 	mvprintw(3, BOARD_WIDTH * 2 + 3, "score: %d\n", game->score);
 
+	for (i = 0; i != 7; ++i) {
+		attron(COLOR_PAIR(minos[i].color));
+		mvprintw(5 + i, BOARD_WIDTH * 2 + 3, "%c%c%c:\t%d",
+			 minos[i].block_left, minos[i].symbol , minos[i].block_right,
+			 game->mino_count[i]);
+		attroff(COLOR_PAIR(minos[i].color));
+	}
+
 	/* Draw current tetromino */
 	attron(COLOR_PAIR(game->mino.color));
 	for (i = 0; i != 4; ++i) {
@@ -154,8 +169,7 @@ update_timing(game_state *game)
 	}
 }
 
-int
-in_range(int x, int y)
+int in_range(int x, int y)
 {
 	return x >= 0 && x < BOARD_WIDTH && y < BOARD_HEIGHT;
 }
@@ -202,12 +216,16 @@ clear_lines(game_state *game)
 void
 spawn_mino(game_state *game)
 {
+	int r;
+
 	game->mino_pos.x = (BOARD_WIDTH - 1) / 2;
 	game->mino_pos.y = 0;
 
 	game->flags |= BIT(DRAW);
 
-	memcpy(&game->mino, &minos[rand() % 7], sizeof(tetromino));
+	r = rand() % 7;
+	memcpy(&game->mino, &minos[r], sizeof(tetromino));
+	++game->mino_count[r];
 }
 
 int
@@ -284,7 +302,7 @@ rotate_mino(game_state *game, int dir)
 	memcpy(&tmp, &game->mino, sizeof(tetromino));
 
 	if (game->mino.flags & BIT(ROTATE_TWICE)) {
-		dir = tmp.flags & BIT(ROTATION);
+		dir = !(tmp.flags & BIT(ROTATION));
 		tmp.flags ^= BIT(ROTATION);
 	}
 

@@ -65,6 +65,7 @@ typedef struct {
 
 typedef struct {
 	char block_left, block_right;
+	char symbol;
 	point block_pos[4];
 	point pivot;
 	int color;
@@ -77,8 +78,9 @@ typedef struct {
 	uint8_t flags;
 	tetromino mino;
 	point mino_pos;
-	/* Score */
+	/* Stats */
 	uint8_t level;
+	uint32_t mino_count[7];
 	uint32_t lines;
 	uint32_t score;
 	uint32_t drop_score;
@@ -90,6 +92,7 @@ typedef struct {
 void new_game(game_state *game);
 void draw_board(game_state *game);
 void update_timing(game_state *game);
+void fill_mino_bag(game_state *game);
 
 int  in_range(int x, int y);
 void line_down(game_state *game, int y);
