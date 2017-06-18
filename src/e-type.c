@@ -43,19 +43,19 @@ main(int argc, char **argv)
 		switch (getch()) {
 		case 'W':
 		case 'w':
-			move_mino(&game, 0, -1);
+			move_mino(&game, 0, -1, SOFT_DROP);
 			break;
 		case 'S':
 		case 's':
-			move_mino(&game, 0, 1);
+			move_mino(&game, 0, 1, SOFT_DROP);
 			break;
 		case 'A':
 		case 'a':
-			move_mino(&game, -1, 0);
+			move_mino(&game, -1, 0, SOFT_DROP);
 			break;
 		case 'D':
 		case 'd':
-			move_mino(&game, 1, 0);
+			move_mino(&game, 1, 0, SOFT_DROP);
 			break;
 		case 'J':
 		case 'j':
@@ -68,6 +68,9 @@ main(int argc, char **argv)
 		case 'R':
 		case 'r':
 			spawn_mino(&game);
+			break;
+		case ' ':
+			hard_drop(&game);
 			break;
 		case 'Q':
 		case 'q':

@@ -37,11 +37,6 @@
 #define IMMUNITY_TIMER		0.2
 
 /* Movement */
-#define HARD_DROP		0
-#define SOFT_DROP		1
-#define AUTO_DROP		2
-
-/* Rotation */
 #define CLOCKWISE		0
 #define COUNTER_CLOCKWISE	1
 

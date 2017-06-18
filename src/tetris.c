@@ -102,7 +102,7 @@ new_game(game_state *game)
 	game->flags = BIT(DRAW);
 	game->fpc = INITIAL_SPEED;
 
-	if (game->scores = fopen(HI_SCORES, "rb")) {
+	if ((game->scores = fopen(HI_SCORES, "rb"))) {
 		fread(&game->hi_score, sizeof(game->hi_score), 1, game->scores);
 		fclose(game->scores);
 	}
@@ -117,7 +117,7 @@ game_over(game_state *game)
 		game->hi_score = game->score;
 	}
 
-	if (game->scores = fopen(HI_SCORES, "wb")) {
+	if ((game->scores = fopen(HI_SCORES, "wb"))) {
 		fwrite(&game->hi_score, sizeof(game->hi_score), 1, game->scores);
 		fclose(game->scores);
 	}
@@ -162,6 +162,17 @@ draw_board(game_state *game)
 		attroff(COLOR_PAIR(minos[i].color));
 	}
 
+	/* Draw ghost tetromino */
+	attron(A_BOLD);
+	for (i = 0; i != 4; ++i) {
+		x = (game->mino_pos.x + game->mino.block_pos[i].x) * 2 + 1;
+		y = game->mino.block_pos[i].y + game->ghost_pos + 1;
+
+		mvaddch(y, x, game->mino.block_left);
+		mvaddch(y, x + 1, game->mino.block_right);
+	}
+	attroff(A_BOLD);
+
 	/* Draw current tetromino */
 	attron(COLOR_PAIR(game->mino.color));
 	for (i = 0; i != 4; ++i) {
@@ -184,10 +195,30 @@ update_timing(game_state *game)
 {
 	if ((double)(clock() - game->clock) / CLOCKS_PER_SEC > (game->fpc / 60.0)) {
 		game->clock = clock();
-		if (move_mino(game, 0, 1) == SUCCESS) {
+		if (move_mino(game, 0, 1, AUTO_DROP) == SUCCESS) {
 			--game->drop_score;
 		}
 	}
+}
+
+void
+update_ghost(game_state *game)
+{
+	int i, j, x, y;
+
+	i = 0;
+	do {
+		for (j = 0; j != 4; ++j) {
+			x = game->mino_pos.x + game->mino.block_pos[j].x;
+			y = game->mino_pos.y + game->mino.block_pos[j].y + i;
+
+			if (y >= 0 && (!in_range(x, y) || game->board[y][x])) {
+				break;
+			}
+		}
+	} while (j == 4 && ++i);
+
+	game->ghost_pos = game->mino_pos.y + i - 1;
 }
 
 int
@@ -239,6 +270,13 @@ clear_lines(game_state *game)
 }
 
 void
+hard_drop(game_state *game)
+{
+	while (move_mino(game, 0, 1, HARD_DROP))
+		;
+}
+
+void
 spawn_mino(game_state *game)
 {
 	int r;
@@ -259,11 +297,13 @@ spawn_mino(game_state *game)
 		}
 	}
 
+	update_ghost(game);
+
 	game->flags |= BIT(DRAW);
 }
 
 int
-move_mino(game_state *game, int dx, int dy)
+move_mino(game_state *game, int dx, int dy, uint8_t flags)
 {
 	int i, x, y;
 
@@ -277,6 +317,17 @@ move_mino(game_state *game, int dx, int dy)
 		    dy == -1) {
 			/* If collided with something while going downwards */
 			if (dx == 0 && dy == 1) {
+				if (game->immune) {
+					if (((double)clock() - game->immune) / CLOCKS_PER_SEC < IMMUNITY_TIMER) {
+						return SUCCESS;
+					}
+				} else if (flags == SOFT_DROP) {
+					game->immune = clock();
+					return SUCCESS;
+				}
+
+				game->immune = 0;
+
 				for (i = 0; i != 4; ++i) {
 					game->board[game->mino.block_pos[i].y + game->mino_pos.y]
 						[game->mino.block_pos[i].x + game->mino_pos.x] = game->mino.color;
@@ -307,9 +358,11 @@ move_mino(game_state *game, int dx, int dy)
 	if (dy == 1) {
 		++game->drop_score;
 	}
-		
+
 	game->mino_pos.x += dx;
 	game->mino_pos.y += dy;
+
+	update_ghost(game);
 
 	game->flags |= BIT(DRAW);
 
@@ -321,7 +374,7 @@ rotate_mino(game_state *game, int dir)
 {
 	tetromino tmp;
 	point *p;
-	int abs_x, abs_y, z;
+	int abs_x, abs_y, i, z;
 
 	if (game->mino.flags & BIT(ROTATE_NONE)) {
 		return FAILURE;
@@ -334,7 +387,7 @@ rotate_mino(game_state *game, int dir)
 		tmp.flags ^= BIT(ROTATION);
 	}
 
-	for (int i = 0; i != 4; ++i) {
+	for (i = 0; i != 4; ++i) {
 		p = &tmp.block_pos[i];
 		p->x -= tmp.pivot.x;
 		p->y -= tmp.pivot.y;
@@ -355,12 +408,14 @@ rotate_mino(game_state *game, int dir)
 		abs_x = p->x + game->mino_pos.x;
 		abs_y = p->y + game->mino_pos.y;
 
-		if (!in_range(abs_x, abs_y) || game->board[abs_y][abs_x]) {
+		if (abs_y >= 0 && (!in_range(abs_x, abs_y) || game->board[abs_y][abs_x])) {
 			return FAILURE;
 		}
 	}
 
 	memcpy(&game->mino, &tmp, sizeof(tetromino));
+	update_ghost(game);
+
 	game->flags |= BIT(DRAW);
 
 	return SUCCESS;
