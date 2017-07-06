@@ -38,95 +38,101 @@ const int score_mult[4] = { 40, 100, 300, 1200 };
  *	- Color.
  *	- Special flags. (Mainly rotation)
  */
-const tetromino minos[7] = { { '<', '>',
-			       'I',
-			       { { 0, 0 }, { 0, 1 },		/* I */
-				 { 0, 2 }, { 0, 3 } },
-			       { 0, 2 },
-			       RED,
-			       BIT(ROTATE_TWICE) },
-			     
-			     { '{', '}',
-			       'L',
-			       { { -1, 0 }, { 0, 0 },		/* L */
-				 { 1, 0 }, { -1, 1 } },
-			       { 0, 0 },
-			       GREEN,
-			       0 },
-			     
-			     { '(', ')',
-			       'J',
-			       { { -1, 0 }, { 0, 0 },		/* J */
-				 { 1, 0 }, { 1, 1 } },
-			       { 0, 0 },
-			       YELLOW,
-			       0 },
-			     
-			     { '[', ']',
-			       'O',
-			       { { 0, 0 }, { 1, 0 },		/* O */
-				 { 0, 1 }, { 1, 1 } },
-			       { 0, 0 },
-			       BLUE,
-			       BIT(ROTATE_NONE) },
-			     
-			     { '%', '%',
-			       'S',
-			       { { 0, 0 }, { 1, 0 },		/* S */
-				 { 0, 1 }, { -1, 1 } },
-			       { 0, 0 },
-			       MAGENTA,
-			       BIT(ROTATE_TWICE) },
-			     
-			     { '@', '@',
-			       'Z',
-			       { { 0, 0 }, { -1, 0 },		/* Z */
-				 { 0, 1 }, { 1, 1 } },
-			       { 0, 0 },
-			       CYAN,
-			       BIT(ROTATE_TWICE) },
-			     
-			     { '#', '#',
-			       'T',
-			       { { 0, 0 }, { -1, 0 },		/* T */
-				 { 1, 0 }, { 0, 1 } },
-			       { 0, 0 },
-			       WHITE,
-			       0 } };
-	
-void
-new_game(game_state *game)
-{
-	memset(game, 0, sizeof(game_state));
-	game->clock = clock();
-	game->flags = BIT(DRAW);
-	game->fpc = INITIAL_SPEED;
+const mino minos[7] = { { '<', '>',
+			  'I',
+			  { { 0, 0 }, { 0, 1 },		/* I */
+			    { 0, 2 }, { 0, 3 } },
+			  { 0, 2 },
+			  RED,
+			  BIT(ROTATE_TWICE) },
+			
+			{ '{', '}',
+			  'L',
+			  { { -1, 0 }, { 0, 0 },		/* L */
+			    { 1, 0 }, { -1, 1 } },
+			  { 0, 0 },
+			  GREEN,
+			  0 },
+			
+			{ '(', ')',
+			  'J',
+			  { { -1, 0 }, { 0, 0 },		/* J */
+			    { 1, 0 }, { 1, 1 } },
+			  { 0, 0 },
+			  YELLOW,
+			  0 },
+			
+			{ '[', ']',
+			  'O',
+			  { { 0, 0 }, { 1, 0 },		/* O */
+			    { 0, 1 }, { 1, 1 } },
+			  { 0, 0 },
+			  BLUE,
+			  BIT(ROTATE_NONE) },
+			
+			{ '%', '%',
+			  'S',
+			  { { 0, 0 }, { 1, 0 },		/* S */
+			    { 0, 1 }, { -1, 1 } },
+			  { 0, 0 },
+			  MAGENTA,
+			  BIT(ROTATE_TWICE) },
+			
+			{ '@', '@',
+			  'Z',
+			  { { 0, 0 }, { -1, 0 },		/* Z */
+			    { 0, 1 }, { 1, 1 } },
+			  { 0, 0 },
+			  CYAN,
+			  BIT(ROTATE_TWICE) },
+			
+			{ '#', '#',
+			  'T',
+			  { { 0, 0 }, { -1, 0 },		/* T */
+			    { 1, 0 }, { 0, 1 } },
+			  { 0, 0 },
+			  WHITE,
+			  0 } };
 
-	if ((game->scores = fopen(HI_SCORES, "rb"))) {
-		fread(&game->hi_score, sizeof(game->hi_score), 1, game->scores);
-		fclose(game->scores);
+void
+new_game(game_state *gs)
+{
+	memset(gs, 0, sizeof(game_state));
+	gs->clock = clock();
+	gs->flags = BIT(DRAW);
+	gs->fpc = INITIAL_SPEED;
+
+	if ((gs->scores = fopen(HI_SCORES, "rb"))) {
+		fread(&gs->hi_score, sizeof(gs->hi_score), 1, gs->scores);
+		fclose(gs->scores);
 	}
 
-	spawn_mino(game);
+	spawn_mino(gs);
 }
 
 void
-game_over(game_state *game)
+game_over(game_state *gs)
 {
-	if (game->score > game->hi_score) {
-		game->hi_score = game->score;
+	if (gs->score > gs->hi_score) {
+		gs->hi_score = gs->score;
 	}
 
-	if ((game->scores = fopen(HI_SCORES, "wb"))) {
-		fwrite(&game->hi_score, sizeof(game->hi_score), 1, game->scores);
-		fclose(game->scores);
+	if ((gs->scores = fopen(HI_SCORES, "wb"))) {
+		fwrite(&gs->hi_score, sizeof(gs->hi_score), 1, gs->scores);
+		fclose(gs->scores);
 	}
 
-	game->flags |= BIT(QUIT);
+	gs->flags |= BIT(QUIT);
 }
 
 void
-draw_board(game_state *game)
+pause(game_state *gs)
+{
+	gs->flags |= BIT(PAUSE);
+}
+
+void
+draw_board(game_state *gs)
 {
 	int i, j, x, y, c;
 
@@ -135,7 +141,7 @@ draw_board(game_state *game)
 	for (i = 0; i != BOARD_HEIGHT; ++i) {
 		addch('|');
 		for (j = 0; j != BOARD_WIDTH; ++j) {
-			if ((c = game->board[i][j])) {
+			if ((c = gs->board[i][j])) {
 				attron(COLOR_PAIR(c));
 				printw("%c%c", minos[c - 1].block_left,
 					minos[c - 1].block_right);
@@ -149,76 +155,81 @@ draw_board(game_state *game)
 	printw("*--------------------*\n");
 
 	/* Draw statistics */
-	mvprintw(1, BOARD_WIDTH * 2 + 3, "score: %d\n", game->score);
-	mvprintw(2, BOARD_WIDTH * 2 + 3, "hi-score: %d\n", game->hi_score);
-	mvprintw(4, BOARD_WIDTH * 2 + 3, "lines: %d\n", game->lines);
-	mvprintw(5, BOARD_WIDTH * 2 + 3, "level: %d\n", game->level);
+	mvprintw(1, BOARD_WIDTH * 2 + 3, "score: %d\n", gs->score);
+	mvprintw(2, BOARD_WIDTH * 2 + 3, "hi-score: %d\n", gs->hi_score);
+	mvprintw(4, BOARD_WIDTH * 2 + 3, "lines: %d\n", gs->lines);
+	mvprintw(5, BOARD_WIDTH * 2 + 3, "level: %d\n", gs->level);
 
 	for (i = 0; i != 7; ++i) {
 		attron(COLOR_PAIR(minos[i].color));
 		mvprintw(7 + i, BOARD_WIDTH * 2 + 3, "%c%c%c:\t%d",
 			 minos[i].block_left, minos[i].symbol , minos[i].block_right,
-			 game->mino_count[i]);
+			 gs->mino_count[i]);
 		attroff(COLOR_PAIR(minos[i].color));
 	}
 
 	/* Draw ghost tetromino */
 	attron(A_BOLD);
 	for (i = 0; i != 4; ++i) {
-		x = (game->mino_pos.x + game->mino.block_pos[i].x) * 2 + 1;
-		y = game->mino.block_pos[i].y + game->ghost_pos + 1;
+		x = (gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x) * 2 + 1;
+		y = gs->curr_mino.block_pos[i].y + gs->ghost_pos + 1;
 
-		mvaddch(y, x, game->mino.block_left);
-		mvaddch(y, x + 1, game->mino.block_right);
+		mvaddch(y, x, gs->curr_mino.block_left);
+		mvaddch(y, x + 1, gs->curr_mino.block_right);
 	}
 	attroff(A_BOLD);
 
 	/* Draw current tetromino */
-	attron(COLOR_PAIR(game->mino.color));
+	attron(COLOR_PAIR(gs->curr_mino.color));
 	for (i = 0; i != 4; ++i) {
-		x = game->mino_pos.x + game->mino.block_pos[i].x;
-		y = game->mino_pos.y + game->mino.block_pos[i].y;
+		x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x;
+		y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[i].y;
 
 		if (in_range(x, y) && y >= 0) {
 			x = x * 2 + 1;
 			++y;
 			
-			mvaddch(y, x, game->mino.block_left);
-			mvaddch(y, x + 1, game->mino.block_right);
+			mvaddch(y, x, gs->curr_mino.block_left);
+			mvaddch(y, x + 1, gs->curr_mino.block_right);
 		}
 	}
-	attroff(COLOR_PAIR(game->mino.color));
+	attroff(COLOR_PAIR(gs->curr_mino.color));
+
+	/* Print pause screen if neccessary */
+	if (gs->flags & BIT(PAUSE)) {
+		mvprintw(0, 0, "PAUSE");
+	}
 }
 
 void
-update_timing(game_state *game)
+update_timing(game_state *gs)
 {
-	if ((double)(clock() - game->clock) / CLOCKS_PER_SEC > (game->fpc / 60.0)) {
-		game->clock = clock();
-		if (move_mino(game, 0, 1, AUTO_DROP) == SUCCESS) {
-			--game->drop_score;
+	if ((double)(clock() - gs->clock) / CLOCKS_PER_SEC > (gs->fpc / 60.0)) {
+		gs->clock = clock();
+		if (move_mino(gs, 0, 1, AUTO_DROP) == SUCCESS) {
+			--gs->drop_score;
 		}
 	}
 }
 
 void
-update_ghost(game_state *game)
+update_ghost(game_state *gs)
 {
 	int i, j, x, y;
 
 	i = 0;
 	do {
 		for (j = 0; j != 4; ++j) {
-			x = game->mino_pos.x + game->mino.block_pos[j].x;
-			y = game->mino_pos.y + game->mino.block_pos[j].y + i;
+			x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[j].x;
+			y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[j].y + i;
 
-			if (y >= 0 && (!in_range(x, y) || game->board[y][x])) {
+			if (y >= 0 && (!in_range(x, y) || gs->board[y][x])) {
 				break;
 			}
 		}
 	} while (j == 4 && ++i);
 
-	game->ghost_pos = game->mino_pos.y + i - 1;
+	gs->ghost_pos = gs->curr_mino_pos.y + i - 1;
 }
 
 int
@@ -228,31 +239,31 @@ in_range(int x, int y)
 }
 
 void
-line_down(game_state *game, int y)
+line_down(game_state *gs, int y)
 {
 	int i;
 
 	for (i = 0; i != BOARD_WIDTH; ++i) {
-		game->board[y + 1][i] = game->board[y][i];
-		game->board[y][i] = 0;
+		gs->board[y + 1][i] = gs->board[y][i];
+		gs->board[y][i] = 0;
 	}
 }
 
 void
-clear_lines(game_state *game)
+clear_lines(game_state *gs)
 {
 	int i, j, lines;
 
 	lines = 0;
 	/* Loop though all lines in the board */
 	for (i = BOARD_HEIGHT - 1; i >= 0; --i) {
-		for (j = 0; j != BOARD_WIDTH && game->board[i][j]; ++j)
+		for (j = 0; j != BOARD_WIDTH && gs->board[i][j]; ++j)
 			;
 
 		/* If a full line was found, clear it and move all lines above it down by 1 */
 		if (j == BOARD_WIDTH) {
 			for (j = i - 1; j >= 0; --j) {
-				line_down(game, j);
+				line_down(gs, j);
 			}
 
 			++i;
@@ -263,91 +274,91 @@ clear_lines(game_state *game)
 
 	/* If at least 1 line was cleared, update score */
 	if (lines) {
-		game->score += (game->level + 1) * score_mult[lines - 1];
-		game->lines += lines;
-		game->level = game->lines / 10;
+		gs->score += (gs->level + 1) * score_mult[lines - 1];
+		gs->lines += lines;
+		gs->level = gs->lines / 10;
 	}
 }
 
 void
-hard_drop(game_state *game)
+hard_drop(game_state *gs)
 {
-	while (move_mino(game, 0, 1, HARD_DROP))
+	while (move_mino(gs, 0, 1, HARD_DROP))
 		;
 }
 
 void
-spawn_mino(game_state *game)
+spawn_mino(game_state *gs)
 {
 	int r;
 
 	/* Initial tetromino position */
-	game->mino_pos.x = (BOARD_WIDTH - 1) / 2;
-	game->mino_pos.y = 0;
+	gs->curr_mino_pos.x = (BOARD_WIDTH - 1) / 2;
+	gs->curr_mino_pos.y = 0;
 
 	/* Choose random tetromino */
 	r = rand() % 7;
-	memcpy(&game->mino, &minos[r], sizeof(tetromino));
-	++game->mino_count[r];
+	memcpy(&gs->curr_mino, &minos[r], sizeof(mino));
+	++gs->mino_count[r];
 
 	/* Quit game if spawn location is already occupied. (calling move_mino(game, 0, 0) might be better) */
 	for (r = 0; r != 4; ++r) {
-		if (game->board[game->mino.block_pos[r].y + game->mino_pos.y][game->mino.block_pos[r].x + game->mino_pos.x]) {
-			game_over(game);
+		if (gs->board[gs->curr_mino.block_pos[r].y + gs->curr_mino_pos.y][gs->curr_mino.block_pos[r].x + gs->curr_mino_pos.x]) {
+			game_over(gs);
 		}
 	}
 
-	update_ghost(game);
+	update_ghost(gs);
 
-	game->flags |= BIT(DRAW);
+	gs->flags |= BIT(DRAW);
 }
 
 int
-move_mino(game_state *game, int dx, int dy, uint8_t flags)
+move_mino(game_state *gs, int dx, int dy, uint8_t flags)
 {
 	int i, x, y;
 
 	for (i = 0; i != 4; ++i) {
-		x = game->mino_pos.x + game->mino.block_pos[i].x;
-		y = game->mino_pos.y + game->mino.block_pos[i].y;
+		x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x;
+		y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[i].y;
 		
 		/* Check if moving mino causes it to go out of bounds */
 		if (!in_range(x + dx, y + dy) ||
-		    (y >= 0 && game->board[y + dy][x + dx] && !game->board[y][x]) ||
+		    (y >= 0 && gs->board[y + dy][x + dx] && !gs->board[y][x]) ||
 		    dy == -1) {
 			/* If collided with something while going downwards */
 			if (dx == 0 && dy == 1) {
-				if (game->immune) {
-					if (((double)clock() - game->immune) / CLOCKS_PER_SEC < IMMUNITY_TIMER) {
+				if (gs->immune) {
+					if (((double)clock() - gs->immune) / CLOCKS_PER_SEC < IMMUNITY_TIMER) {
 						return SUCCESS;
 					}
 				} else if (flags == SOFT_DROP) {
-					game->immune = clock();
+					gs->immune = clock();
 					return SUCCESS;
 				}
 
-				game->immune = 0;
+				gs->immune = 0;
 
 				for (i = 0; i != 4; ++i) {
-					game->board[game->mino.block_pos[i].y + game->mino_pos.y]
-						[game->mino.block_pos[i].x + game->mino_pos.x] = game->mino.color;
+					gs->board[gs->curr_mino.block_pos[i].y + gs->curr_mino_pos.y]
+						[gs->curr_mino.block_pos[i].x + gs->curr_mino_pos.x] = gs->curr_mino.color;
 				}
 
-				clear_lines(game);
-				spawn_mino(game);
+				clear_lines(gs);
+				spawn_mino(gs);
 
-				game->score += game->drop_score;
-				game->drop_score = 0;
+				gs->score += gs->drop_score;
+				gs->drop_score = 0;
 
 				/* Update falling speed */
-				if (game->level <= 8) {
-					game->fpc = 48 - (game->level * 5);
-				} else if (game->level <= 18) {
-					game->fpc = 9 - (game->level / 3);
-				} else if (game->level <= 28) {
-					game->fpc = 2;
+				if (gs->level <= 8) {
+					gs->fpc = 48 - (gs->level * 5);
+				} else if (gs->level <= 18) {
+					gs->fpc = 9 - (gs->level / 3);
+				} else if (gs->level <= 28) {
+					gs->fpc = 2;
 				} else {
-					game->fpc = 1;
+					gs->fpc = 1;
 				}
 			}
 
@@ -356,33 +367,33 @@ move_mino(game_state *game, int dx, int dy, uint8_t flags)
 	}
 
 	if (dy == 1) {
-		++game->drop_score;
+		++gs->drop_score;
 	}
 
-	game->mino_pos.x += dx;
-	game->mino_pos.y += dy;
+	gs->curr_mino_pos.x += dx;
+	gs->curr_mino_pos.y += dy;
 
-	update_ghost(game);
+	update_ghost(gs);
 
-	game->flags |= BIT(DRAW);
+	gs->flags |= BIT(DRAW);
 
 	return SUCCESS;
 }
 
 int
-rotate_mino(game_state *game, int dir)
+rotate_mino(game_state *gs, int dir)
 {
-	tetromino tmp;
+	mino tmp;
 	point *p;
 	int abs_x, abs_y, i, z;
 
-	if (game->mino.flags & BIT(ROTATE_NONE)) {
+	if (gs->curr_mino.flags & BIT(ROTATE_NONE)) {
 		return FAILURE;
 	}
 
-	memcpy(&tmp, &game->mino, sizeof(tetromino));
+	memcpy(&tmp, &gs->curr_mino, sizeof(mino));
 
-	if (game->mino.flags & BIT(ROTATE_TWICE)) {
+	if (gs->curr_mino.flags & BIT(ROTATE_TWICE)) {
 		dir = !(tmp.flags & BIT(ROTATION));
 		tmp.flags ^= BIT(ROTATION);
 	}
@@ -405,18 +416,18 @@ rotate_mino(game_state *game, int dir)
 		p->x += tmp.pivot.x;
 		p->y += tmp.pivot.y;
 
-		abs_x = p->x + game->mino_pos.x;
-		abs_y = p->y + game->mino_pos.y;
+		abs_x = p->x + gs->curr_mino_pos.x;
+		abs_y = p->y + gs->curr_mino_pos.y;
 
-		if (abs_y >= 0 && (!in_range(abs_x, abs_y) || game->board[abs_y][abs_x])) {
+		if (abs_y >= 0 && (!in_range(abs_x, abs_y) || gs->board[abs_y][abs_x])) {
 			return FAILURE;
 		}
 	}
 
-	memcpy(&game->mino, &tmp, sizeof(tetromino));
-	update_ghost(game);
+	memcpy(&gs->curr_mino, &tmp, sizeof(mino));
+	update_ghost(gs);
 
-	game->flags |= BIT(DRAW);
+	gs->flags |= BIT(DRAW);
 
 	return SUCCESS;
 }

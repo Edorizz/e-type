@@ -17,70 +17,32 @@
  *
  */
 
-#include <stdio.h>
+/* C library */
 #include <stdlib.h>
-#include <stdint.h>
-#include <time.h>
-
+/* e-type */
 #include "tetris.h"
 
 void init_ncurses(void);
+void handle_input(game_state *gs);
 
 int
 main(int argc, char **argv)
 {
-	game_state game;
+	game_state gs;
 
 	init_ncurses();
 
 	srand(time(NULL));
 
-	new_game(&game);
+	new_game(&gs);
 	/* Game loop */
-	while (!(game.flags & BIT(QUIT))) {
-		update_timing(&game);
+	while (!(gs.flags & BIT(QUIT))) {
+		update_timing(&gs);
+		handle_input(&gs);
 
-		switch (getch()) {
-		case 'W':
-		case 'w':
-			move_mino(&game, 0, -1, SOFT_DROP);
-			break;
-		case 'S':
-		case 's':
-			move_mino(&game, 0, 1, SOFT_DROP);
-			break;
-		case 'A':
-		case 'a':
-			move_mino(&game, -1, 0, SOFT_DROP);
-			break;
-		case 'D':
-		case 'd':
-			move_mino(&game, 1, 0, SOFT_DROP);
-			break;
-		case 'J':
-		case 'j':
-			rotate_mino(&game, CLOCKWISE);
-			break;
-		case 'K':
-		case 'k':
-			rotate_mino(&game, COUNTER_CLOCKWISE);
-			break;
-		case 'R':
-		case 'r':
-			spawn_mino(&game);
-			break;
-		case ' ':
-			hard_drop(&game);
-			break;
-		case 'Q':
-		case 'q':
-			game_over(&game);
-			break;
-		}
-
-		if (game.flags & BIT(DRAW)) {
-			draw_board(&game);
-			game.flags ^= BIT(DRAW);
+		if (gs.flags & BIT(DRAW)) {
+			draw_board(&gs);
+			gs.flags ^= BIT(DRAW);
 
 			refresh();
 		}
@@ -100,13 +62,56 @@ init_ncurses(void)
 	timeout(0);
 
 	/* Init color */
+	use_default_colors();
 	start_color();
-	init_pair(RED, COLOR_RED, COLOR_BLACK);
-	init_pair(GREEN, COLOR_GREEN, COLOR_BLACK);
-	init_pair(YELLOW, COLOR_YELLOW, COLOR_BLACK);
-	init_pair(BLUE, COLOR_BLUE, COLOR_BLACK);
-	init_pair(MAGENTA, COLOR_MAGENTA, COLOR_BLACK);
-	init_pair(CYAN, COLOR_CYAN, COLOR_BLACK);
-	init_pair(WHITE, COLOR_WHITE, COLOR_BLACK);
+	init_pair(RED, COLOR_RED, -1);
+	init_pair(GREEN, COLOR_GREEN, -1);
+	init_pair(YELLOW, COLOR_YELLOW, -1);
+	init_pair(BLUE, COLOR_BLUE, -1);
+	init_pair(MAGENTA, COLOR_MAGENTA, -1);
+	init_pair(CYAN, COLOR_CYAN, -1);
+	init_pair(WHITE, COLOR_WHITE, -1);
+}
+
+void
+handle_input(game_state *gs)
+{
+	switch (getch()) {
+	case 'W':
+	case 'w':
+		move_mino(gs, 0, -1, SOFT_DROP);
+		break;
+	case 'S':
+	case 's':
+		move_mino(gs, 0, 1, SOFT_DROP);
+		break;
+	case 'A':
+	case 'a':
+		move_mino(gs, -1, 0, SOFT_DROP);
+		break;
+	case 'D':
+	case 'd':
+		move_mino(gs, 1, 0, SOFT_DROP);
+		break;
+	case 'J':
+	case 'j':
+		rotate_mino(gs, CLOCKWISE);
+		break;
+	case 'K':
+	case 'k':
+		rotate_mino(gs, COUNTER_CLOCKWISE);
+		break;
+	case 'R':
+	case 'r':
+		spawn_mino(gs);
+		break;
+	case ' ':
+		hard_drop(gs);
+		break;
+	case 'Q':
+	case 'q':
+		game_over(gs);
+		break;
+	}
 }
 

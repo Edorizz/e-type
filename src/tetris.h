@@ -20,39 +20,15 @@
 #ifndef TETRIS_H
 #define TETRIS_H
 
-/* Ncurses colors */
-#define RESET			0
-#define RED 			1
-#define GREEN 			2
-#define YELLOW 			3
-#define BLUE 			4
-#define MAGENTA			5
-#define CYAN 			6
-#define WHITE 			7
-
 /* Standard Tetris */
 #define BOARD_HEIGHT		20
 #define BOARD_WIDTH		10
 #define INITIAL_SPEED		48
 #define IMMUNITY_TIMER		0.2
 
-/* Movement */
-#define HARD_DROP		0
-#define SOFT_DROP		1
-#define AUTO_DROP		2
-
 /* Rotation */
 #define CLOCKWISE		0
 #define COUNTER_CLOCKWISE	1
-
-/* Game state flags */
-#define QUIT			0
-#define DRAW			1
-
-/* Tetromino flags */
-#define ROTATION		0
-#define ROTATE_NONE		1
-#define ROTATE_TWICE		2
 
 /* Tetromino movement/rotation status */
 #define SUCCESS			1
@@ -64,59 +40,72 @@
 /* Special directories */
 #define HI_SCORES		"e-type.dat"
 
+/* C library */
+#include <stdio.h>
 #include <stdint.h>
 #include <time.h>
+/* Ncurses */
 #include <ncurses.h>
 
-typedef struct {
+/* Choose one of this colors for each tetromino */
+typedef enum { RESET, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE } char_colors;
+/* Drop types, used when calling move_mino() */
+typedef enum { HARD_DROP, SOFT_DROP, AUTO_DROP } drop_type;
+/* Special tetromino attributes */
+typedef enum { ROTATION, ROTATE_NONE, ROTATE_TWICE } mino_flags;
+/* Game signals used to control the game */
+typedef enum { QUIT, DRAW, PAUSE } signals;
+
+typedef struct _point {
 	int x, y;
 } point;
 
-typedef struct {
-	char block_left, block_right;
-	char symbol;
-	point block_pos[4];
-	point pivot;
-	int color;
-	uint8_t flags;
-} tetromino;
+typedef struct _mino {
+	char		block_left, block_right;
+	char		symbol;
+	point		block_pos[4];
+	point		pivot;
+	int		color;
+	uint8_t		flags;
+} mino;
 
-typedef struct {
-	/* Game state */
-	uint8_t board[BOARD_HEIGHT][BOARD_WIDTH];
-	uint8_t flags;
-	tetromino mino;
-	point mino_pos;
-	uint8_t ghost_pos;
-	/* Stats */
-	uint8_t level;
-	uint32_t mino_count[7];
-	uint32_t lines;
-	uint32_t hi_score;
-	uint32_t score;
-	uint32_t drop_score;
-	/* Timing */
-	clock_t clock;
-	clock_t immune;
-	double fpc;
-	/* Extra */
-	FILE *scores;
+typedef struct _game_state {
+	/* [Board state] */
+	uint8_t		board[BOARD_HEIGHT][BOARD_WIDTH];
+	uint8_t 	flags;
+	mino 		curr_mino;
+	point 		curr_mino_pos;
+	uint8_t 	ghost_pos;
+	/* [Stats] */
+	uint8_t		level;
+	uint32_t	mino_count[7];
+	uint32_t	lines;
+	uint32_t	hi_score;
+	uint32_t	score;
+	uint32_t	drop_score;
+	/* [Timing] */
+	clock_t		clock;
+	clock_t		immune;
+	double		fpc;
+	/* [Extra] */
+	FILE		*scores;
 } game_state;
 
-void new_game(game_state *game);
-void game_over(game_state *game);
-void draw_board(game_state *game);
-void update_timing(game_state *game);
-void update_ghost(game_state *game);
+void new_game(game_state *gs);
+void game_over(game_state *gs);
+void pause(game_state *gs);
+void draw_board(game_state *gs);
+void update_timing(game_state *gs);
+void update_ghost(game_state *gs);
 
 int  in_range(int x, int y);
-void line_down(game_state *game, int y);
-void clear_lines(game_state *game);
-void hard_drop(game_state *game);
+void line_down(game_state *gs, int y);
+void clear_lines(game_state *gs);
+void hard_drop(game_state *gs);
 
-void spawn_mino(game_state *game);
-int  move_mino(game_state *game, int dx, int dy, uint8_t flags);
-int  rotate_mino(game_state *game, int dir);
+void spawn_mino(game_state *gs);
+int  move_mino(game_state *gs, int dx, int dy, uint8_t flags);
+int  rotate_mino(game_state *gs, int dir);
 
 #endif /* TETRIS_H */
 
