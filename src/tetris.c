@@ -134,16 +134,57 @@ pause(game_state *gs)
 }
 
 void
+draw_mino(const mino *m, int x, int y, uint8_t flags)
+{
+	int i, rx, ry;
+
+	attron(COLOR_PAIR(m->color));
+
+	for (i = 0; i != 4; ++i) {
+		rx = x + m->block_pos[i].x * 2;
+		ry = y + m->block_pos[i].y;
+
+		mvprintw(ry, rx, "%c%c", m->block_left, m->block_right);
+			 
+	}
+
+	attroff(COLOR_PAIR(m->color));
+}
+
+void
+bdraw_mino(const mino *m, int x, int y, uint8_t flags)
+{
+	int i, rx, ry, attr;
+
+	attr = flags & BIT(DRAW_GHOST) ? A_BOLD : COLOR_PAIR(m->color);
+	attron(attr);
+
+	for (i = 0; i != 4; ++i) {
+		rx = x + m->block_pos[i].x;
+		ry = y + m->block_pos[i].y;
+
+		if (in_range(x, y) && y >= 0) {
+			rx *= 2;
+
+			mvprintw(ry + BOARD_SY, rx + BOARD_SX,
+				 "%c%c", m->block_left, m->block_right);
+		}
+	}
+
+	attroff(attr);
+}
+
+void
 draw_board(game_state *gs)
 {
-	int i, j, x, y, c;
+	int i, j, c;
 	const mino *next_mino;
 
 	/* Draw board */
 	mvprintw(0, 0, "*--------------------*\n");
-	for (i = 0; i != BOARD_HEIGHT; ++i) {
+	for (i = 0; i != BOARD_H; ++i) {
 		addch('|');
-		for (j = 0; j != BOARD_WIDTH; ++j) {
+		for (j = 0; j != BOARD_W; ++j) {
 			if ((c = gs->board[i][j])) {
 				attron(COLOR_PAIR(c));
 				printw("%c%c", minos[c - 1].block_left,
@@ -158,62 +199,28 @@ draw_board(game_state *gs)
 	printw("*--------------------*\n");
 
 	/* Draw statistics */
-	mvprintw(1, BOARD_WIDTH * 2 + 3, "score: %d\n", gs->score);
-	mvprintw(2, BOARD_WIDTH * 2 + 3, "hi-score: %d\n", gs->hi_score);
-	mvprintw(4, BOARD_WIDTH * 2 + 3, "lines: %d\n", gs->lines);
-	mvprintw(5, BOARD_WIDTH * 2 + 3, "level: %d\n", gs->level);
+	mvprintw(1, BOARD_W * 2 + 3, "score: %d\n", gs->score);
+	mvprintw(2, BOARD_W * 2 + 3, "hi-score: %d\n", gs->hi_score);
+	mvprintw(4, BOARD_W * 2 + 3, "lines: %d\n", gs->lines);
+	mvprintw(5, BOARD_W * 2 + 3, "level: %d\n", gs->level);
 
 	for (i = 0; i != 7; ++i) {
 		attron(COLOR_PAIR(minos[i].color));
-		mvprintw(7 + i, BOARD_WIDTH * 2 + 3, "%c%c%c:\t%d",
+		mvprintw(7 + i, BOARD_W * 2 + 3, "%c%c%c:\t%d",
 			 minos[i].block_left, minos[i].symbol , minos[i].block_right,
 			 gs->mino_count[i]);
 		attroff(COLOR_PAIR(minos[i].color));
 	}
 
 	/* Draw ghost tetromino */
-	attron(A_BOLD);
-	for (i = 0; i != 4; ++i) {
-		x = (gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x) * 2 + 1;
-		y = gs->curr_mino.block_pos[i].y + gs->ghost_pos + 1;
-
-		mvaddch(y, x, gs->curr_mino.block_left);
-		mvaddch(y, x + 1, gs->curr_mino.block_right);
-	}
-	attroff(A_BOLD);
+	bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->ghost_pos, BIT(DRAW_GHOST));
 
 	/* Draw current tetromino */
-	attron(COLOR_PAIR(gs->curr_mino.color));
-	for (i = 0; i != 4; ++i) {
-		x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x;
-		y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[i].y;
-
-		if (in_range(x, y) && y >= 0) {
-			x = x * 2 + 1;
-			++y;
-			
-			mvaddch(y, x, gs->curr_mino.block_left);
-			mvaddch(y, x + 1, gs->curr_mino.block_right);
-		}
-	}
-	attroff(COLOR_PAIR(gs->curr_mino.color));
+	bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->curr_mino_pos.y, 0);
 
 	/* Draw next tetromino */
 	next_mino = &minos[bag_peek(&gs->magic_bag)];
-	attron(COLOR_PAIR(next_mino->color));
-	for (i = 0; i != 4; ++i) {
-		x = BOARD_WIDTH * 2 + 6 + (next_mino->block_pos[i].x * 2);
-		y = 15 + next_mino->block_pos[i].y;
-
-		mvaddch(y, x, next_mino->block_left);
-		mvaddch(y, x + 1, next_mino->block_right);
-	}
-	attroff(COLOR_PAIR(next_mino->color));
-
-	/* Print pause screen if neccessary */
-	if (gs->flags & BIT(PAUSE)) {
-		mvprintw(0, 0, "PAUSE");
-	}
+	draw_mino(next_mino, (BOARD_W + BOARD_SX) * 2 + 4, 15, 0);
 }
 
 void
@@ -250,7 +257,7 @@ update_ghost(game_state *gs)
 int
 in_range(int x, int y)
 {
-	return x >= 0 && x < BOARD_WIDTH && y < BOARD_HEIGHT;
+	return x >= 0 && x < BOARD_W && y < BOARD_H;
 }
 
 void
@@ -258,7 +265,7 @@ line_down(game_state *gs, int y)
 {
 	int i;
 
-	for (i = 0; i != BOARD_WIDTH; ++i) {
+	for (i = 0; i != BOARD_W; ++i) {
 		gs->board[y + 1][i] = gs->board[y][i];
 		gs->board[y][i] = 0;
 	}
@@ -271,12 +278,12 @@ clear_lines(game_state *gs)
 
 	lines = 0;
 	/* Loop though all lines in the board */
-	for (i = BOARD_HEIGHT - 1; i >= 0; --i) {
-		for (j = 0; j != BOARD_WIDTH && gs->board[i][j]; ++j)
+	for (i = BOARD_H - 1; i >= 0; --i) {
+		for (j = 0; j != BOARD_W && gs->board[i][j]; ++j)
 			;
 
 		/* If a full line was found, clear it and move all lines above it down by 1 */
-		if (j == BOARD_WIDTH) {
+		if (j == BOARD_W) {
 			for (j = i - 1; j >= 0; --j) {
 				line_down(gs, j);
 			}
@@ -308,7 +315,7 @@ spawn_mino(game_state *gs)
 	int r;
 
 	/* Initial tetromino position */
-	gs->curr_mino_pos.x = (BOARD_WIDTH - 1) / 2;
+	gs->curr_mino_pos.x = (BOARD_W - 1) / 2;
 	gs->curr_mino_pos.y = 0;
 
 	/* Choose random tetromino */

@@ -21,8 +21,10 @@
 #define TETRIS_H
 
 /* Standard Tetris */
-#define BOARD_HEIGHT		20
-#define BOARD_WIDTH		10
+#define BOARD_H			20
+#define BOARD_W			10
+#define BOARD_SX		1
+#define BOARD_SY		1
 #define INITIAL_SPEED		48
 #define IMMUNITY_TIMER		0.2
 
@@ -55,6 +57,8 @@ typedef enum { RESET, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE } char_colo
 typedef enum { HARD_DROP, SOFT_DROP, AUTO_DROP } drop_type;
 /* Special tetromino attributes */
 typedef enum { ROTATION, ROTATE_NONE, ROTATE_TWICE } mino_flags;
+/* Drawing flags */
+typedef enum { DRAW_GHOST } draw_flags;
 /* Game signals used to control the game */
 typedef enum { QUIT, DRAW, PAUSE } signals;
 
@@ -73,7 +77,7 @@ typedef struct _mino {
 
 typedef struct _game_state {
 	/* [Board state] */
-	uint8_t		board[BOARD_HEIGHT][BOARD_WIDTH];
+	uint8_t		board[BOARD_H][BOARD_W];
 	uint8_t 	flags;
 	mino 		curr_mino;
 	point 		curr_mino_pos;
@@ -97,6 +101,8 @@ typedef struct _game_state {
 void new_game(game_state *gs);
 void game_over(game_state *gs);
 void pause(game_state *gs);
+void draw_mino(const mino *m, int x, int y, uint8_t flags);
+void bdraw_mino(const mino *m, int x, int y, uint8_t flags);
 void draw_board(game_state *gs);
 void update_timing(game_state *gs);
 void update_ghost(game_state *gs);
