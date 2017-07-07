@@ -102,6 +102,8 @@ new_game(game_state *gs)
 	gs->flags = BIT(DRAW);
 	gs->fpc = INITIAL_SPEED;
 
+	bag_init(&gs->magic_bag);
+
 	if ((gs->scores = fopen(HI_SCORES, "rb"))) {
 		fread(&gs->hi_score, sizeof(gs->hi_score), 1, gs->scores);
 		fclose(gs->scores);
@@ -135,6 +137,7 @@ void
 draw_board(game_state *gs)
 {
 	int i, j, x, y, c;
+	const mino *next_mino;
 
 	/* Draw board */
 	mvprintw(0, 0, "*--------------------*\n");
@@ -194,6 +197,18 @@ draw_board(game_state *gs)
 		}
 	}
 	attroff(COLOR_PAIR(gs->curr_mino.color));
+
+	/* Draw next tetromino */
+	next_mino = &minos[bag_peek(&gs->magic_bag)];
+	attron(COLOR_PAIR(next_mino->color));
+	for (i = 0; i != 4; ++i) {
+		x = BOARD_WIDTH * 2 + 6 + (next_mino->block_pos[i].x * 2);
+		y = 15 + next_mino->block_pos[i].y;
+
+		mvaddch(y, x, next_mino->block_left);
+		mvaddch(y, x + 1, next_mino->block_right);
+	}
+	attroff(COLOR_PAIR(next_mino->color));
 
 	/* Print pause screen if neccessary */
 	if (gs->flags & BIT(PAUSE)) {
@@ -297,7 +312,7 @@ spawn_mino(game_state *gs)
 	gs->curr_mino_pos.y = 0;
 
 	/* Choose random tetromino */
-	r = rand() % 7;
+	r = bag_next(&gs->magic_bag);
 	memcpy(&gs->curr_mino, &minos[r], sizeof(mino));
 	++gs->mino_count[r];
 

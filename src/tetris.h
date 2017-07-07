@@ -46,6 +46,8 @@
 #include <time.h>
 /* Ncurses */
 #include <ncurses.h>
+/* e-type */
+#include "bag.h"
 
 /* Choose one of this colors for each tetromino */
 typedef enum { RESET, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE } char_colors;
@@ -76,6 +78,7 @@ typedef struct _game_state {
 	mino 		curr_mino;
 	point 		curr_mino_pos;
 	uint8_t 	ghost_pos;
+	rand_bag	magic_bag;
 	/* [Stats] */
 	uint8_t		level;
 	uint32_t	mino_count[7];
