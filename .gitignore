@@ -2,3 +2,4 @@ e-type
 *.o
 *.swp
 *.dat
+*.log

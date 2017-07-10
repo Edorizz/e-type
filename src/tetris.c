@@ -38,71 +38,79 @@ const int score_mult[4] = { 40, 100, 300, 1200 };
  *	- Color.
  *	- Special flags. (Mainly rotation)
  */
-const mino minos[7] = { { '<', '>',
-			  'I',
-			  { { 0, 0 }, { 0, 1 },		/* I */
-			    { 0, 2 }, { 0, 3 } },
-			  { 0, 2 },
-			  RED,
-			  BIT(ROTATE_TWICE) },
-			
-			{ '{', '}',
-			  'L',
-			  { { -1, 0 }, { 0, 0 },		/* L */
-			    { 1, 0 }, { -1, 1 } },
-			  { 0, 0 },
-			  GREEN,
-			  0 },
-			
-			{ '(', ')',
-			  'J',
-			  { { -1, 0 }, { 0, 0 },		/* J */
-			    { 1, 0 }, { 1, 1 } },
-			  { 0, 0 },
-			  YELLOW,
-			  0 },
-			
-			{ '[', ']',
-			  'O',
-			  { { 0, 0 }, { 1, 0 },		/* O */
-			    { 0, 1 }, { 1, 1 } },
-			  { 0, 0 },
-			  BLUE,
-			  BIT(ROTATE_NONE) },
-			
-			{ '%', '%',
-			  'S',
-			  { { 0, 0 }, { 1, 0 },		/* S */
-			    { 0, 1 }, { -1, 1 } },
-			  { 0, 0 },
-			  MAGENTA,
-			  BIT(ROTATE_TWICE) },
-			
-			{ '@', '@',
-			  'Z',
-			  { { 0, 0 }, { -1, 0 },		/* Z */
-			    { 0, 1 }, { 1, 1 } },
-			  { 0, 0 },
-			  CYAN,
-			  BIT(ROTATE_TWICE) },
-			
-			{ '#', '#',
-			  'T',
-			  { { 0, 0 }, { -1, 0 },		/* T */
-			    { 1, 0 }, { 0, 1 } },
-			  { 0, 0 },
-			  WHITE,
-			  0 } };
+const struct mino minos[7] = { { '<', '>',
+				 'I',
+				 { { -1, 0 }, { 0, 0 },			/* I */
+				   { 1, 0 }, { 2, 0 } },
+				 { 0, 0 },
+				 RED,
+				 BIT(ROTATE_TWICE) },
+			       
+			       { '{', '}',
+				 'L',
+				 { { -1, 0 }, { 0, 0 },		/* L */
+				   { 1, 0 }, { -1, 1 } },
+				 { 0, 0 },
+				 GREEN,
+				 0 },
+			       
+			       { '(', ')',
+				 'J',
+				 { { -1, 0 }, { 0, 0 },		/* J */
+				   { 1, 0 }, { 1, 1 } },
+				 { 0, 0 },
+				 YELLOW,
+				 0 },
+			       
+			       { '[', ']',
+				 'O',
+				 { { 0, 0 }, { 1, 0 },			/* O */
+				   { 0, 1 }, { 1, 1 } },
+				 { 0, 0 },
+				 BLUE,
+				 BIT(ROTATE_NONE) },
+			       
+			       { '%', '%',
+				 'S',
+				 { { 0, 0 }, { 1, 0 },			/* S */
+				   { 0, 1 }, { -1, 1 } },
+				 { 0, 0 },
+				 MAGENTA,
+				 BIT(ROTATE_TWICE) },
+			       
+			       { '@', '@',
+				 'Z',
+				 { { 0, 0 }, { -1, 0 },		/* Z */
+				   { 0, 1 }, { 1, 1 } },
+				 { 0, 0 },
+				 CYAN,
+				 BIT(ROTATE_TWICE) },
+			       
+			       { '#', '#',
+				 'T',
+				 { { 0, 0 }, { -1, 0 },		/* T */
+				   { 1, 0 }, { 0, 1 } },
+				 { 0, 0 },
+				 WHITE,
+				 0 } };
 
 void
-new_game(game_state *gs)
+new_game(struct game_state *gs)
 {
-	memset(gs, 0, sizeof(game_state));
+	memset(gs, 0, sizeof(struct game_state));
 	gs->clock = clock();
 	gs->flags = BIT(DRAW);
 	gs->fpc = INITIAL_SPEED;
 
-	bag_init(&gs->magic_bag);
+	config_default(&gs->prof);
+	if (config_read("config", &gs->prof) == -1) {
+		game_over(gs);
+		return;
+	}
+
+	printf("config done\n");
+	gs->prof.rand_init(gs->prof.rng);
+	printf("config done\n");
 
 	if ((gs->scores = fopen(HI_SCORES, "rb"))) {
 		fread(&gs->hi_score, sizeof(gs->hi_score), 1, gs->scores);
@@ -113,7 +121,7 @@ new_game(game_state *gs)
 }
 
 void
-game_over(game_state *gs)
+game_over(struct game_state *gs)
 {
 	if (gs->score > gs->hi_score) {
 		gs->hi_score = gs->score;
@@ -124,17 +132,13 @@ game_over(game_state *gs)
 		fclose(gs->scores);
 	}
 
+	config_free(&gs->prof);
+
 	gs->flags |= BIT(QUIT);
 }
 
 void
-pause(game_state *gs)
-{
-	gs->flags |= BIT(PAUSE);
-}
-
-void
-draw_mino(const mino *m, int x, int y, uint8_t flags)
+draw_mino(const struct mino *m, int x, int y, uint8_t flags)
 {
 	int i, rx, ry;
 
@@ -152,7 +156,7 @@ draw_mino(const mino *m, int x, int y, uint8_t flags)
 }
 
 void
-bdraw_mino(const mino *m, int x, int y, uint8_t flags)
+bdraw_mino(const struct mino *m, int x, int y, uint8_t flags)
 {
 	int i, rx, ry, attr;
 
@@ -163,7 +167,7 @@ bdraw_mino(const mino *m, int x, int y, uint8_t flags)
 		rx = x + m->block_pos[i].x;
 		ry = y + m->block_pos[i].y;
 
-		if (in_range(x, y) && y >= 0) {
+		if (in_range(rx, ry) && ry >= 0) {
 			rx *= 2;
 
 			mvprintw(ry + BOARD_SY, rx + BOARD_SX,
@@ -175,10 +179,10 @@ bdraw_mino(const mino *m, int x, int y, uint8_t flags)
 }
 
 void
-draw_board(game_state *gs)
+draw_board(struct game_state *gs)
 {
 	int i, j, c;
-	const mino *next_mino;
+	const struct mino *next_mino;
 
 	/* Draw board */
 	mvprintw(0, 0, "*--------------------*\n");
@@ -213,18 +217,20 @@ draw_board(game_state *gs)
 	}
 
 	/* Draw ghost tetromino */
-	bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->ghost_pos, BIT(DRAW_GHOST));
+	if (gs->prof.flags & BIT(CONFIG_FGHOST)) {
+		bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->ghost_pos, BIT(DRAW_GHOST));
+	}
 
 	/* Draw current tetromino */
 	bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->curr_mino_pos.y, 0);
 
 	/* Draw next tetromino */
-	next_mino = &minos[bag_peek(&gs->magic_bag)];
+	next_mino = &minos[gs->prof.rand_peek(gs->prof.rng)];
 	draw_mino(next_mino, (BOARD_W + BOARD_SX) * 2 + 4, 15, 0);
 }
 
 void
-update_timing(game_state *gs)
+update_timing(struct game_state *gs)
 {
 	if ((double)(clock() - gs->clock) / CLOCKS_PER_SEC > (gs->fpc / 60.0)) {
 		gs->clock = clock();
@@ -235,7 +241,7 @@ update_timing(game_state *gs)
 }
 
 void
-update_ghost(game_state *gs)
+update_ghost(struct game_state *gs)
 {
 	int i, j, x, y;
 
@@ -261,7 +267,7 @@ in_range(int x, int y)
 }
 
 void
-line_down(game_state *gs, int y)
+line_down(struct game_state *gs, int y)
 {
 	int i;
 
@@ -272,7 +278,7 @@ line_down(game_state *gs, int y)
 }
 
 void
-clear_lines(game_state *gs)
+clear_lines(struct game_state *gs)
 {
 	int i, j, lines;
 
@@ -303,14 +309,14 @@ clear_lines(game_state *gs)
 }
 
 void
-hard_drop(game_state *gs)
+hard_drop(struct game_state *gs)
 {
 	while (move_mino(gs, 0, 1, HARD_DROP))
 		;
 }
 
 void
-spawn_mino(game_state *gs)
+spawn_mino(struct game_state *gs)
 {
 	int r;
 
@@ -319,8 +325,8 @@ spawn_mino(game_state *gs)
 	gs->curr_mino_pos.y = 0;
 
 	/* Choose random tetromino */
-	r = bag_next(&gs->magic_bag);
-	memcpy(&gs->curr_mino, &minos[r], sizeof(mino));
+	r = gs->prof.rand_next(gs->prof.rng);
+	memcpy(&gs->curr_mino, &minos[r], sizeof(struct mino));
 	++gs->mino_count[r];
 
 	/* Quit game if spawn location is already occupied. (calling move_mino(game, 0, 0) might be better) */
@@ -336,7 +342,7 @@ spawn_mino(game_state *gs)
 }
 
 int
-move_mino(game_state *gs, int dx, int dy, uint8_t flags)
+move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 {
 	int i, x, y;
 
@@ -344,7 +350,7 @@ move_mino(game_state *gs, int dx, int dy, uint8_t flags)
 		x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x;
 		y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[i].y;
 		
-		/* Check if moving mino causes it to go out of bounds */
+		/* Check if moving struct mino causes it to go out of bounds */
 		if (!in_range(x + dx, y + dy) ||
 		    (y >= 0 && gs->board[y + dy][x + dx] && !gs->board[y][x]) ||
 		    dy == -1) {
@@ -403,17 +409,17 @@ move_mino(game_state *gs, int dx, int dy, uint8_t flags)
 }
 
 int
-rotate_mino(game_state *gs, int dir)
+rotate_mino(struct game_state *gs, int dir)
 {
-	mino tmp;
-	point *p;
+	struct mino tmp;
+	struct point *p;
 	int abs_x, abs_y, i, z;
 
 	if (gs->curr_mino.flags & BIT(ROTATE_NONE)) {
 		return FAILURE;
 	}
 
-	memcpy(&tmp, &gs->curr_mino, sizeof(mino));
+	memcpy(&tmp, &gs->curr_mino, sizeof(struct mino));
 
 	if (gs->curr_mino.flags & BIT(ROTATE_TWICE)) {
 		dir = !(tmp.flags & BIT(ROTATION));
@@ -446,7 +452,7 @@ rotate_mino(game_state *gs, int dir)
 		}
 	}
 
-	memcpy(&gs->curr_mino, &tmp, sizeof(mino));
+	memcpy(&gs->curr_mino, &tmp, sizeof(struct mino));
 	update_ghost(gs);
 
 	gs->flags |= BIT(DRAW);

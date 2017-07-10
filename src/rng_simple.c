@@ -17,30 +17,37 @@
  *
  */
 
-#ifndef RAND_BAG_H
-#define RAND_BAG_H
-
-#define BAG_SIZE	7
-
+/* Header file */
+#include "rng_simple.h"
 /* C library */
-#include <stdint.h>
+#include <stdlib.h>
 
-typedef struct _rand_bag {
-	uint8_t	bag[BAG_SIZE + 1];
-	int	bag_ind;
-} rand_bag;
+void
+simple_init(void *rng)
+{
+	simple_next(rng);
+}
 
-/* Ramdomize the bag */
-void bag_init(rand_bag *bag);
+int
+simple_next(void *rng)
+{
+	struct rng_simple *simple;
+	int tmp;
 
-/* Put all items back in the bag */
-void bag_refill(rand_bag *bag);
+	simple = rng;
+	tmp = simple->next;
+	simple->next = rand() % 7;
 
-/* Takes the next item out of the bag and return it */
-int  bag_next(rand_bag *bag);
+	return tmp;
+}
 
-/* Shows the next item in the bag without taking the item out. */
-int  bag_peek(rand_bag *bag);
+int
+simple_peek(void *rng)
+{
+	struct rng_simple *simple;
 
-#endif /* RAND_BAG_H */
+	simple = rng;
+
+	return simple->next;
+}
 

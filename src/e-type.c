@@ -21,31 +21,32 @@
 #include <stdlib.h>
 /* e-type */
 #include "tetris.h"
+#include "log.h"
 
 void init_ncurses(void);
-void handle_input(game_state *gs);
+void handle_input(struct game_state *gs);
 
 int
 main(int argc, char **argv)
 {
-	game_state gs;
+	struct game_state gs;
 
-	init_ncurses();
-
+	log_init("e-type.log");
 	srand(time(NULL));
-
+	init_ncurses();
 	new_game(&gs);
+
 	/* Game loop */
 	while (!(gs.flags & BIT(QUIT))) {
-		update_timing(&gs);
-		handle_input(&gs);
-
 		if (gs.flags & BIT(DRAW)) {
 			draw_board(&gs);
 			gs.flags ^= BIT(DRAW);
 
 			refresh();
 		}
+
+		update_timing(&gs);
+		handle_input(&gs);
 	}
 	
 	endwin();
@@ -74,7 +75,7 @@ init_ncurses(void)
 }
 
 void
-handle_input(game_state *gs)
+handle_input(struct game_state *gs)
 {
 	switch (getch()) {
 	case 'W':

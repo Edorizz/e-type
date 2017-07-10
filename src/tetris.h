@@ -32,12 +32,9 @@
 #define CLOCKWISE		0
 #define COUNTER_CLOCKWISE	1
 
-/* Tetromino movement/rotation status */
+/* Tetrostruct mino movement/rotation status */
 #define SUCCESS			1
 #define FAILURE			0
-
-/* Bit manipulation */
-#define BIT(n)			(1 << n)
 
 /* Special directories */
 #define HI_SCORES		"e-type.dat"
@@ -49,72 +46,72 @@
 /* Ncurses */
 #include <ncurses.h>
 /* e-type */
-#include "bag.h"
+#include "config.h"
+#include "utils.h"
 
-/* Choose one of this colors for each tetromino */
+/* Choose one of this colors for each tetrostruct mino */
 typedef enum { RESET, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE } char_colors;
-/* Drop types, used when calling move_mino() */
+/* Drop types, used when calling move_struct mino() */
 typedef enum { HARD_DROP, SOFT_DROP, AUTO_DROP } drop_type;
-/* Special tetromino attributes */
+/* Special tetrostruct mino attributes */
 typedef enum { ROTATION, ROTATE_NONE, ROTATE_TWICE } mino_flags;
 /* Drawing flags */
 typedef enum { DRAW_GHOST } draw_flags;
 /* Game signals used to control the game */
-typedef enum { QUIT, DRAW, PAUSE } signals;
+typedef enum { QUIT, DRAW } signals;
 
-typedef struct _point {
+struct point {
 	int x, y;
-} point;
+};
 
-typedef struct _mino {
-	char		block_left, block_right;
-	char		symbol;
-	point		block_pos[4];
-	point		pivot;
-	int		color;
-	uint8_t		flags;
-} mino;
+struct mino {
+	char block_left, block_right;
+	char symbol;
+	struct point block_pos[4];
+	struct point pivot;
+	int color;
+	uint8_t	flags;
+};
 
-typedef struct _game_state {
+struct game_state {
 	/* [Board state] */
-	uint8_t		board[BOARD_H][BOARD_W];
-	uint8_t 	flags;
-	mino 		curr_mino;
-	point 		curr_mino_pos;
-	uint8_t 	ghost_pos;
-	rand_bag	magic_bag;
+	uint8_t board[BOARD_H][BOARD_W];
+	uint8_t flags;
+	struct mino curr_mino;
+	struct point curr_mino_pos;
+	uint8_t ghost_pos;
+	struct config_prof prof;
 	/* [Stats] */
-	uint8_t		level;
-	uint32_t	mino_count[7];
-	uint32_t	lines;
-	uint32_t	hi_score;
-	uint32_t	score;
-	uint32_t	drop_score;
+	uint8_t	level;
+	uint32_t mino_count[7];
+	uint32_t lines;
+	uint32_t hi_score;
+	uint32_t score;
+	uint32_t drop_score;
 	/* [Timing] */
-	clock_t		clock;
-	clock_t		immune;
-	double		fpc;
+	clock_t	clock;
+	clock_t	immune;
+	double fpc;
 	/* [Extra] */
-	FILE		*scores;
-} game_state;
+	FILE *scores;
+};
 
-void new_game(game_state *gs);
-void game_over(game_state *gs);
-void pause(game_state *gs);
-void draw_mino(const mino *m, int x, int y, uint8_t flags);
-void bdraw_mino(const mino *m, int x, int y, uint8_t flags);
-void draw_board(game_state *gs);
-void update_timing(game_state *gs);
-void update_ghost(game_state *gs);
+void new_game(struct game_state *gs);
+void game_over(struct game_state *gs);
+void draw_mino(const struct mino *m, int x, int y, uint8_t flags);
+void bdraw_mino(const struct mino *m, int x, int y, uint8_t flags);
+void draw_board(struct game_state *gs);
+void update_timing(struct game_state *gs);
+void update_ghost(struct game_state *gs);
 
 int  in_range(int x, int y);
-void line_down(game_state *gs, int y);
-void clear_lines(game_state *gs);
-void hard_drop(game_state *gs);
+void line_down(struct game_state *gs, int y);
+void clear_lines(struct game_state *gs);
+void hard_drop(struct game_state *gs);
 
-void spawn_mino(game_state *gs);
-int  move_mino(game_state *gs, int dx, int dy, uint8_t flags);
-int  rotate_mino(game_state *gs, int dir);
+void spawn_mino(struct game_state *gs);
+int  move_mino(struct game_state *gs, int dx, int dy, uint8_t flags);
+int  rotate_mino(struct game_state *gs, int dir);
 
 #endif /* TETRIS_H */
 

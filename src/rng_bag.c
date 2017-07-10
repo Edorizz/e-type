@@ -1,4 +1,4 @@
-/*
+/**
  * e-type - Tetris clone for your terminal
  * Copyright (C) 2017  Edgar Mendoza
 
@@ -18,22 +18,9 @@
  */
 
 /* Header file */
-#include "bag.h"
+#include "rng_bag.h"
 /* C library */
 #include <stdlib.h>
-
-void
-bag_init(rand_bag *bag)
-{
-	int i;
-
-	bag->bag_ind = 0;
-	for (i = 0; i != BAG_SIZE; ++i) {
-		bag->bag[i] = i;
-	}
-	bag->bag[BAG_SIZE] = rand() % BAG_SIZE;
-	bag_refill(bag);
-}
 
 void
 swap(uint8_t *a, uint8_t *b)
@@ -56,24 +43,47 @@ scramble(uint8_t *arr, int size)
 }
 
 void
-bag_refill(rand_bag *bag)
+bag_init(void *arg)
 {
 	int i;
+	struct rng_bag *bag;
+
+	bag = arg;
+
+	bag->bag_ind = 0;
+	for (i = 0; i != 7; ++i) {
+		bag->bag[i] = i;
+	}
+	bag->bag[7] = rand() % 7;
+	bag_refill(bag);
+}
+
+void
+bag_refill(void *arg)
+{
+	int i;
+	struct rng_bag *bag;
+
+	bag = arg;
 	
-	for (i = 0; bag->bag[i] != bag->bag[BAG_SIZE]; ++i)
+	for (i = 0; bag->bag[i] != bag->bag[7]; ++i)
 		;
 
 	swap(&bag->bag[0], &bag->bag[i]);
-	scramble(bag->bag + 1, BAG_SIZE - 1);
+	scramble(bag->bag + 1, 7 - 1);
 
-	bag->bag[BAG_SIZE] = rand() % BAG_SIZE;
+	bag->bag[7] = rand() % 7;
 	bag->bag_ind = 0;
 }
 
 int
-bag_next(rand_bag *bag)
+bag_next(void *arg)
 {
-	if (bag->bag_ind == BAG_SIZE) {
+	struct rng_bag *bag;
+
+	bag = arg;
+
+	if (bag->bag_ind == 7) {
 		bag_refill(bag);
 	}
 
@@ -81,9 +91,13 @@ bag_next(rand_bag *bag)
 }
 
 int
-bag_peek(rand_bag *bag)
+bag_peek(void *arg)
 {
-	if (bag->bag_ind == BAG_SIZE) {
+	struct rng_bag *bag;
+
+	bag = arg;
+
+	if (bag->bag_ind == 7) {
 		bag_refill(bag);
 	}
 	
