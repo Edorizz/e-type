@@ -45,8 +45,12 @@ main(int argc, char **argv)
 			refresh();
 		}
 
-		update_timing(&gs);
-		handle_input(&gs);
+		if (gs.flags & BIT(LBREAK)) {
+			update_lbreak(&gs);
+		} else {
+			update_timing(&gs);
+			handle_input(&gs);
+		}
 	}
 	
 	endwin();

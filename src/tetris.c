@@ -22,6 +22,8 @@
 /* C library */
 #include <string.h>
 #include <stdlib.h>
+/* e-type */
+#include "log.h"
 
 /*
  * This gets applied to the standard Tetris scoring formula
@@ -214,13 +216,15 @@ draw_board(struct game_state *gs)
 	}
 
 	/* Draw ghost tetromino */
-	if (gs->prof.flags & BIT(CONFIG_FGHOST)) {
-		bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->ghost_pos, BIT(DRAW_GHOST));
+	if (!(gs->flags & BIT(LBREAK))) {
+		if (gs->prof.flags & BIT(CONFIG_FGHOST)) {
+			bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->ghost_pos, BIT(DRAW_GHOST));
+		}
+		
+		/* Draw current tetromino */
+		bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->curr_mino_pos.y, 0);
 	}
-
-	/* Draw current tetromino */
-	bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->curr_mino_pos.y, 0);
-
+			
 	/* Draw next tetromino */
 	next_mino = &minos[gs->prof.rand_peek(gs->prof.rng)];
 	draw_mino(next_mino, (BOARD_W + BOARD_SX) * 2 + 4, 15, 0);
@@ -257,6 +261,32 @@ update_ghost(struct game_state *gs)
 	gs->ghost_pos = gs->curr_mino_pos.y + i - 1;
 }
 
+void
+update_lbreak(struct game_state *gs)
+{
+	int i;
+	
+	if ((double)(clock() - gs->lbreak_timer) / CLOCKS_PER_SEC >= LINE_BREAK_BLOCK_TIMER) {
+		if (gs->lbreak_block == BOARD_W / 2) {
+			clear_lines(gs);
+			spawn_mino(gs);
+			gs->flags ^= BIT(LBREAK);
+		} else {
+			log_write("lines: %d\n", gs->lbreak_count);
+
+			for (i = 0; i != gs->lbreak_count; ++i) {
+				log_write("\tl%d: %d\n", i, gs->lbreak_lines[i]);
+				gs->board[gs->lbreak_lines[i]][(BOARD_W - 1) / 2 - gs->lbreak_block] = 0;
+				gs->board[gs->lbreak_lines[i]][(BOARD_W) / 2 + gs->lbreak_block] = 0;
+			}
+
+			++gs->lbreak_block;
+			gs->flags |= BIT(DRAW);
+			gs->lbreak_timer = clock();
+		}
+	}
+}
+
 int
 in_range(int x, int y)
 {
@@ -268,6 +298,7 @@ line_down(struct game_state *gs, int y)
 {
 	int i;
 
+	log_write("d: %d\n", y);
 	for (i = 0; i != BOARD_W; ++i) {
 		gs->board[y + 1][i] = gs->board[y][i];
 		gs->board[y][i] = 0;
@@ -277,30 +308,21 @@ line_down(struct game_state *gs, int y)
 void
 clear_lines(struct game_state *gs)
 {
-	int i, j, lines;
+	int i, j;
 
-	lines = 0;
-	/* Loop though all lines in the board */
-	for (i = BOARD_H - 1; i >= 0; --i) {
-		for (j = 0; j != BOARD_W && gs->board[i][j]; ++j)
-			;
-
-		/* If a full line was found, clear it and move all lines above it down by 1 */
-		if (j == BOARD_W) {
-			for (j = i - 1; j >= 0; --j) {
+	if (gs->lbreak_count) {
+		/* Loop though all lines in the board */
+		for (i = 0; i != gs->lbreak_count; ++i) {
+			log_write("-------!\n");
+			for (j = gs->lbreak_lines[i] - 1; j >= 0; --j) {
 				line_down(gs, j);
 			}
-
-			++i;
-			++lines;
-			continue;
+			log_write("-------!\n");
 		}
-	}
-
-	/* If at least 1 line was cleared, update score */
-	if (lines) {
-		gs->score += (gs->level + 1) * score_mult[lines - 1];
-		gs->lines += lines;
+		
+		/* If at least 1 line was cleared, update score */
+		gs->score += (gs->level + 1) * score_mult[gs->lbreak_count - 1];
+		gs->lines += gs->lbreak_count;
 		gs->level = gs->lines / 10;
 	}
 }
@@ -341,13 +363,13 @@ spawn_mino(struct game_state *gs)
 int
 move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 {
-	int i, x, y;
+	int i, j, k, x, y;
 
 	for (i = 0; i != 4; ++i) {
 		x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x;
 		y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[i].y;
 		
-		/* Check if moving struct mino causes it to go out of bounds */
+		/* Check if moving mino causes it to go out of bounds */
 		if (!in_range(x + dx, y + dy) ||
 		    (y >= 0 && gs->board[y + dy][x + dx] && !gs->board[y][x]) ||
 		    dy == -1) {
@@ -369,8 +391,24 @@ move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 						[gs->curr_mino.block_pos[i].x + gs->curr_mino_pos.x] = gs->curr_mino.color;
 				}
 
-				clear_lines(gs);
-				spawn_mino(gs);
+				/* clear_lines(gs); */
+				gs->lbreak_count = 0;
+				for (j = 0; j != BOARD_H; ++j) {
+					for (k = 0; k != BOARD_W && gs->board[j][k]; ++k)
+						;
+
+					if (k == BOARD_W) {
+						gs->lbreak_lines[gs->lbreak_count++] = j;
+					}
+				}
+
+				if (gs->lbreak_count > 0) {
+					gs->lbreak_timer = clock();
+					gs->lbreak_block = 0;
+					gs->flags |= BIT(LBREAK);
+				} else {
+					spawn_mino(gs);
+				}
 
 				gs->score += gs->drop_score;
 				gs->drop_score = 0;

@@ -27,6 +27,7 @@
 #define BOARD_SY		1
 #define INITIAL_SPEED		48
 #define IMMUNITY_TIMER		0.2
+#define LINE_BREAK_BLOCK_TIMER	0.1
 
 /* Rotation */
 #define CLOCKWISE		0
@@ -57,8 +58,8 @@ typedef enum { HARD_DROP, SOFT_DROP, AUTO_DROP } drop_type;
 typedef enum { ROTATION, ROTATE_NONE, ROTATE_TWICE } mino_flags;
 /* Drawing flags */
 typedef enum { DRAW_GHOST } draw_flags;
-/* Game signals used to control the game */
-typedef enum { QUIT, DRAW } signals;
+/* Flags used to tell the status of the game */
+typedef enum { QUIT, DRAW, LBREAK } status;
 
 struct point {
 	int x, y;
@@ -81,6 +82,11 @@ struct game_state {
 	struct point curr_mino_pos;
 	uint8_t ghost_pos;
 	struct config_prof prof;
+	/* [Line break animation] */
+	clock_t lbreak_timer;
+	int lbreak_block;
+	int lbreak_lines[4];
+	int lbreak_count;
 	/* [Stats] */
 	uint8_t	level;
 	uint32_t mino_count[7];
@@ -103,6 +109,7 @@ void bdraw_mino(const struct mino *m, int x, int y, uint8_t flags);
 void draw_board(struct game_state *gs);
 void update_timing(struct game_state *gs);
 void update_ghost(struct game_state *gs);
+void update_lbreak(struct game_state *gs);
 
 int  in_range(int x, int y);
 void line_down(struct game_state *gs, int y);
