@@ -1,4 +1,4 @@
-/**
+/*
  * e-type - Tetris clone for your terminal
  * Copyright (C) 2017  Edgar Mendoza
 

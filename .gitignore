@@ -1,5 +1,4 @@
-e-type
+e-type*
+!e-type.c
 *.o
 *.swp
-*.dat
-*.log

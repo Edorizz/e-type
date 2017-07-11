@@ -103,10 +103,7 @@ new_game(struct game_state *gs)
 	gs->fpc = INITIAL_SPEED;
 
 	config_default(&gs->prof);
-	if (config_read("config", &gs->prof) == -1) {
-		game_over(gs);
-		return;
-	}
+	config_read("e-type.conf", &gs->prof);
 
 	printf("config done\n");
 	gs->prof.rand_init(gs->prof.rng);
