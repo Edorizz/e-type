@@ -99,12 +99,13 @@ struct game_state {
 	clock_t	immune;
 	double fpc;
 	/* [Extra] */
+	WINDOW *board_win, *stats_win, *next_win, *hold_win;
 	FILE *scores;
 };
 
 void new_game(struct game_state *gs);
 void game_over(struct game_state *gs);
-void draw_mino(const struct mino *m, int x, int y, uint8_t flags);
+void draw_mino(WINDOW *win, const struct mino *m, int x, int y, uint8_t flags);
 void bdraw_mino(const struct mino *m, int x, int y, uint8_t flags);
 void draw_board(struct game_state *gs);
 void update_timing(struct game_state *gs);

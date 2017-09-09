@@ -23,7 +23,7 @@
 #include "tetris.h"
 #include "log.h"
 
-void init_ncurses(void);
+int  init_ncurses(struct game_state *gs);
 void handle_input(struct game_state *gs);
 
 int
@@ -33,10 +33,11 @@ main(int argc, char **argv)
 
 	log_init("e-type.log");
 	srand(time(NULL));
-	init_ncurses();
 	new_game(&gs);
+	init_ncurses(&gs);
 
 	/* Game loop */
+	refresh();
 	while (!(gs.flags & BIT(QUIT))) {
 		if (gs.flags & BIT(DRAW)) {
 			draw_board(&gs);
@@ -57,16 +58,17 @@ main(int argc, char **argv)
 	return 0;
 }
 
-void
-init_ncurses(void)
+int
+init_ncurses(struct game_state *gs)
 {
+	/* Initialize Ncurses */
 	initscr();
 	cbreak();
 	noecho();
 	curs_set(0);
 	timeout(0);
 
-	/* Init color */
+	/* Initialize color */
 	use_default_colors();
 	start_color();
 	init_pair(RED, COLOR_RED, -1);
@@ -76,6 +78,16 @@ init_ncurses(void)
 	init_pair(MAGENTA, COLOR_MAGENTA, -1);
 	init_pair(CYAN, COLOR_CYAN, -1);
 	init_pair(WHITE, COLOR_WHITE, -1);
+
+	/* Create windows */
+	gs->board_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, 0, 0);
+	gs->stats_win = newwin(BOARD_H  + 2, BOARD_W * 2 + 2, 0, BOARD_W * 2 + 2);
+	/*
+	gs->next_win= newwin(BOARD_H + 2, BOARD_W + 2, 0, 2 * (BOARD_W + 2));
+	gs->hold_win= newwin(BOARD_H + 2, BOARD_W + 2, 0, 3 * (BOARD_W + 2));
+	*/
+
+	return 0;
 }
 
 void

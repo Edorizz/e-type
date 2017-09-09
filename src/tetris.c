@@ -109,7 +109,6 @@ new_game(struct game_state *gs)
 
 	printf("config done\n");
 	gs->prof.rand_init(gs->prof.rng);
-	printf("config done\n");
 
 	if ((gs->scores = fopen(HI_SCORES, "rb"))) {
 		fread(&gs->hi_score, sizeof(gs->hi_score), 1, gs->scores);
@@ -137,21 +136,24 @@ game_over(struct game_state *gs)
 }
 
 void
-draw_mino(const struct mino *m, int x, int y, uint8_t flags)
+draw_mino(WINDOW *win, const struct mino *m, int x, int y, uint8_t flags)
 {
 	int i, rx, ry;
 
-	attron(COLOR_PAIR(m->color));
+	if (!(flags & BIT(DRAW_GHOST))) {
+			wattron(win, COLOR_PAIR(m->color));
+	}
 
 	for (i = 0; i != 4; ++i) {
 		rx = x + m->block_pos[i].x * 2;
 		ry = y + m->block_pos[i].y;
 
-		mvprintw(ry, rx, "%c%c", m->block_left, m->block_right);
-			 
+		mvwprintw(win, ry, rx, "%c%c", m->block_left, m->block_right);
 	}
 
-	attroff(COLOR_PAIR(m->color));
+	if (!(flags & BIT(DRAW_GHOST))) {
+		wattroff(win, COLOR_PAIR(m->color));
+	}
 }
 
 void
@@ -183,51 +185,57 @@ draw_board(struct game_state *gs)
 	int i, j, c;
 	const struct mino *next_mino;
 
+	wclear(gs->board_win);
+	wclear(gs->stats_win);
+
 	/* Draw board */
-	mvprintw(0, 0, "*--------------------*\n");
 	for (i = 0; i != BOARD_H; ++i) {
-		addch('|');
+		wmove(gs->board_win, i + 1, 1);
 		for (j = 0; j != BOARD_W; ++j) {
 			if ((c = gs->board[i][j])) {
-				attron(COLOR_PAIR(c));
-				printw("%c%c", minos[c - 1].block_left,
+				wattron(gs->board_win, COLOR_PAIR(c));
+				wprintw(gs->board_win, "%c%c", minos[c - 1].block_left,
 					minos[c - 1].block_right);
-				attroff(COLOR_PAIR(c));
+				wattroff(gs->board_win, COLOR_PAIR(c));
 			} else {
-				printw("%s", "  ");
+				wprintw(gs->board_win, "%s", "  ");
 			}
 		}
-		printw("|\n");
 	}
-	printw("*--------------------*\n");
 
 	/* Draw statistics */
-	mvprintw(1, BOARD_W * 2 + 3, "score: %d\n", gs->score);
-	mvprintw(2, BOARD_W * 2 + 3, "hi-score: %d\n", gs->hi_score);
-	mvprintw(4, BOARD_W * 2 + 3, "lines: %d\n", gs->lines);
-	mvprintw(5, BOARD_W * 2 + 3, "level: %d\n", gs->level);
+	mvwprintw(gs->stats_win, 1, 1, "score: %d", gs->score);
+	mvwprintw(gs->stats_win, 2, 1, "hi-score: %d", gs->hi_score);
+	mvwprintw(gs->stats_win, 4, 1, "lines: %d", gs->lines);
+	mvwprintw(gs->stats_win, 5, 1, "level: %d", gs->level);
 
 	for (i = 0; i != 7; ++i) {
-		attron(COLOR_PAIR(minos[i].color));
-		mvprintw(7 + i, BOARD_W * 2 + 3, "%c%c%c:\t%d",
-			 minos[i].block_left, minos[i].symbol , minos[i].block_right,
-			 gs->mino_count[i]);
-		attroff(COLOR_PAIR(minos[i].color));
+		wattron(gs->stats_win, COLOR_PAIR(minos[i].color));
+		mvwprintw(gs->stats_win, 7 + i, 1, "%c%c%c:\t%d",
+			  minos[i].block_left, minos[i].symbol , minos[i].block_right,
+			  gs->mino_count[i]);
+		wattroff(gs->stats_win, COLOR_PAIR(minos[i].color));
 	}
 
-	/* Draw ghost tetromino */
 	if (!(gs->flags & BIT(LBREAK))) {
+		/* Draw ghost tetromino */
 		if (gs->prof.flags & BIT(CONFIG_FGHOST)) {
-			bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->ghost_pos, BIT(DRAW_GHOST));
+			draw_mino(gs->board_win, &gs->curr_mino, gs->curr_mino_pos.x * 2 + 1, gs->ghost_pos + 1, BIT(DRAW_GHOST));
 		}
 		
 		/* Draw current tetromino */
-		bdraw_mino(&gs->curr_mino, gs->curr_mino_pos.x, gs->curr_mino_pos.y, 0);
+		draw_mino(gs->board_win, &gs->curr_mino, gs->curr_mino_pos.x * 2 + 1, gs->curr_mino_pos.y + 1, 0);
 	}
 			
 	/* Draw next tetromino */
 	next_mino = &minos[gs->prof.rand_peek(gs->prof.rng)];
-	draw_mino(next_mino, (BOARD_W + BOARD_SX) * 2 + 4, 15, 0);
+	draw_mino(gs->stats_win, next_mino, 5, 15, 0);
+
+	box(gs->board_win, 0, 0);
+	box(gs->stats_win, 0, 0);
+
+	wrefresh(gs->board_win);
+	wrefresh(gs->stats_win);
 }
 
 void
