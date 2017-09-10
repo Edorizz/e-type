@@ -49,14 +49,16 @@ load_rng(struct config_prof *prof, int rng_ind)
 	if (prof->rng) {
 		free(prof->rng);
 	}
+
 	prof->rng = malloc(rand_profiles[rng_ind].mem_size);
 }
 
 int
 line_empty(const char *str)
 {
-	while (isblank(*str) || *str == '\n')
+	while (isblank(*str) || *str == '\n') {
 		++str;
+	}
 
 	return *str == '\0';
 }
@@ -64,12 +66,14 @@ line_empty(const char *str)
 int
 grab_word(const char *str, const char **word)
 {
-	while (*str == ' ')
+	while (*str == ' ') {
 		++str;
+	}
 
 	*word = str;
-	while (isalpha(*str) || *str == '_')
+	while (isalpha(*str) || *str == '_') {
 		++str;
+	}
 
 	return str - *word;
 }
@@ -135,8 +139,10 @@ parse_line(const char *line, struct config_prof *prof)
 			} else if (strncmp(var, "ghost_piece", var_size) == 0) {
 				if (strncmp(value, "on", value_size) == 0) {
 					prof->flags |= BIT(CONFIG_FGHOST);
+
 				} else if (strncmp(value, "off", value_size) == 0) {
 					prof->flags &= ~BIT(CONFIG_FGHOST);
+
 				} else {
 					log_write("Invalid value %s in ghost_piece\n", value);
 					return -1;
@@ -145,6 +151,7 @@ parse_line(const char *line, struct config_prof *prof)
 		}
 
 		return 0;
+
 	} else {
 		log_write("Wrong format; expected ':'\n");
 		return -1;

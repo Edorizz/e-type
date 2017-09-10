@@ -29,27 +29,30 @@ void handle_input(struct game_state *gs);
 int
 main(int argc, char **argv)
 {
+	/*
+	 * I like using a big struct to hold everything because it makes agrument
+	 * passing easier to handle since I can just pass the whole thing.
+	 */
 	struct game_state gs;
 
+	/* Initialize everything */
 	log_init("e-type.log");
 	srand(time(NULL));
 	new_game(&gs);
 	init_ncurses(&gs);
 
-	refresh();
-	box(gs.board_win, 0, 0);
-	wrefresh(gs.board_win);
-
 	/* Game loop */
 	refresh();
 	while (!(gs.flags & BIT(QUIT))) {
 		draw_game(&gs);
+		handle_input(&gs);
 
-		if (gs.flags & BIT(LBREAK)) {
-			update_lbreak(&gs);
-		} else {
-			update_timing(&gs);
-			handle_input(&gs);
+		if (!(gs.flags & BIT(PAUSE))) {
+			if (gs.flags & BIT(LBREAK)) {
+				update_lbreak(&gs);
+			} else {
+				update_timing(&gs);
+			}
 		}
 	}
 	
@@ -86,49 +89,65 @@ init_ncurses(struct game_state *gs)
 	return 0;
 }
 
+/* TODO: Allow for customizable keys */
 void
 handle_input(struct game_state *gs)
 {
-	switch (getch()) {
-	case 'W':
-	case 'w':
-		move_mino(gs, 0, -1, SOFT_DROP);
-		break;
-	case 'S':
-	case 's':
-		move_mino(gs, 0, 1, SOFT_DROP);
-		break;
-	case 'A':
-	case 'a':
-		move_mino(gs, -1, 0, SOFT_DROP);
-		break;
-	case 'D':
-	case 'd':
-		move_mino(gs, 1, 0, SOFT_DROP);
-		break;
-	case 'J':
-	case 'j':
-		rotate_mino(gs, CLOCKWISE);
-		break;
-	case 'K':
-	case 'k':
-		rotate_mino(gs, COUNTER_CLOCKWISE);
-		break;
-	case 'R':
-	case 'r':
-		spawn_mino(gs);
-		break;
-	case 'L':
-	case 'l':
-		hold_mino(gs);
-		break;
-	case ' ':
-		hard_drop(gs);
-		break;
-	case 'Q':
-	case 'q':
-		game_over(gs);
-		break;
+	int c;
+
+	c = getch();
+
+	if (gs->flags & BIT(PAUSE)) {
+		if (c == 'P' || c == 'p') {
+			resume(gs);
+		}
+
+	} else {
+		switch (c) {
+		case 'W':
+		case 'w':
+			move_mino(gs, 0, -1, SOFT_DROP);
+			break;
+		case 'S':
+		case 's':
+			move_mino(gs, 0, 1, SOFT_DROP);
+			break;
+		case 'A':
+		case 'a':
+			move_mino(gs, -1, 0, SOFT_DROP);
+			break;
+		case 'D':
+		case 'd':
+			move_mino(gs, 1, 0, SOFT_DROP);
+			break;
+		case 'J':
+		case 'j':
+			rotate_mino(gs, CLOCKWISE);
+			break;
+		case 'K':
+		case 'k':
+			rotate_mino(gs, COUNTER_CLOCKWISE);
+			break;
+		case 'R':
+		case 'r':
+			spawn_mino(gs);
+			break;
+		case 'L':
+		case 'l':
+			hold_mino(gs);
+			break;
+		case ' ':
+			hard_drop(gs);
+			break;
+		case 'P':
+		case 'p':
+			pause(gs);
+			break;
+		case 'Q':
+		case 'q':
+			game_over(gs);
+			break;
+		}
 	}
 }
 

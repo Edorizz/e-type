@@ -103,6 +103,11 @@ const struct mino minos[7] = { { '<', '>',
 				 0,
 				 6 } };
 
+/* -==+ Start/End +==- */
+
+/*
+ * Initialize everyting, read config file.
+ */
 void
 new_game(struct game_state *gs)
 {
@@ -125,6 +130,9 @@ new_game(struct game_state *gs)
 	spawn_mino(gs);
 }
 
+/*
+ * Write hiscore to file and set 'quit' flag
+ */
 void
 game_over(struct game_state *gs)
 {
@@ -142,6 +150,14 @@ game_over(struct game_state *gs)
 	gs->flags |= BIT(QUIT);
 }
 
+/* -==+ Drawing +==- */
+
+/*
+ * Draws tetromino at specified location. The 'win' argument is used
+ * to simplify printing to the main grid, the next mino or to the 
+ * holding mino square. 'flags' right now is just used to disable
+ * color when printing the ghost piece.
+ */
 void
 draw_mino(WINDOW *win, const struct mino *m, int x, int y, uint8_t flags)
 {
@@ -163,6 +179,9 @@ draw_mino(WINDOW *win, const struct mino *m, int x, int y, uint8_t flags)
 	}
 }
 
+/*
+ * Calls necessary drawing functions.
+ */
 void
 draw_game(struct game_state *gs)
 {
@@ -188,6 +207,10 @@ draw_game(struct game_state *gs)
 	}
 }
 
+/*
+ * Draws statistics about the current game in the right section
+ * of the screen, including the next tetromino.
+ */
 void
 draw_stats(struct game_state *gs)
 {
@@ -220,6 +243,9 @@ draw_stats(struct game_state *gs)
 	wrefresh(gs->stats_win);
 }
 
+/*
+ * Draws the main board on the center of the screen.
+ */
 void
 draw_board(struct game_state *gs)
 {
@@ -234,6 +260,7 @@ draw_board(struct game_state *gs)
 				wprintw(gs->board_win, "%c%c", minos[c - 1].block_left,
 					minos[c - 1].block_right);
 				wattroff(gs->board_win, COLOR_PAIR(c));
+
 			} else {
 				wprintw(gs->board_win, "%s", "  ");
 			}
@@ -255,6 +282,39 @@ draw_board(struct game_state *gs)
 	wrefresh(gs->board_win);
 }
 
+/* -==+ Timing +==- */
+
+void
+pause(struct game_state *gs)
+{
+	gs->flags |= BIT(PAUSE);
+	gs->pause_clock = clock();
+
+	wclear(gs->board_win);
+	wclear(gs->hold_win);
+
+	box(gs->board_win, 0, 0);
+	box(gs->hold_win, 0, 0);
+
+	mvwprintw(gs->board_win, 11, 11 - 3, "PAUSE");
+
+	wrefresh(gs->board_win);
+	wrefresh(gs->hold_win);
+}
+
+void
+resume(struct game_state *gs)
+{
+	gs->flags |= BIT(DRAW_BOARD) | BIT(DRAW_HOLD);
+	gs->flags &= ~BIT(PAUSE);
+
+	/* Update piece falling timer */
+	gs->clock += gs->pause_clock - clock();
+}
+
+/*
+ * Update tetromino falling timer.
+ */
 void
 update_timing(struct game_state *gs)
 {
@@ -266,26 +326,9 @@ update_timing(struct game_state *gs)
 	}
 }
 
-void
-update_ghost(struct game_state *gs)
-{
-	int i, j, x, y;
-
-	i = 0;
-	do {
-		for (j = 0; j != 4; ++j) {
-			x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[j].x;
-			y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[j].y + i;
-
-			if (y >= 0 && (!in_range(x, y) || gs->board[y][x])) {
-				break;
-			}
-		}
-	} while (j == 4 && ++i);
-
-	gs->ghost_pos = gs->curr_mino_pos.y + i - 1;
-}
-
+/*
+ * This gets called on every frame of the line break animation
+ */
 void
 update_lbreak(struct game_state *gs)
 {
@@ -296,6 +339,7 @@ update_lbreak(struct game_state *gs)
 			clear_lines(gs);
 			spawn_mino(gs);
 			gs->flags ^= BIT(LBREAK);
+
 		} else {
 			log_write("lines: %d\n", gs->lbreak_count);
 
@@ -312,24 +356,35 @@ update_lbreak(struct game_state *gs)
 	}
 }
 
+/* -==+ Check/Update Board state +==- */
+
+/*
+ * Return if 'x' and 'y' are lower than the board limits (normally 10x20).
+ * 'y' can be lower than 0 and return true but 'x' can't.
+ */
 int
 in_range(int x, int y)
 {
 	return x >= 0 && x < BOARD_W && y < BOARD_H;
 }
 
+/*
+ * Move line data to the line below it, blanking former.
+ */
 void
 line_down(struct game_state *gs, int y)
 {
 	int i;
 
-	log_write("d: %d\n", y);
 	for (i = 0; i != BOARD_W; ++i) {
 		gs->board[y + 1][i] = gs->board[y][i];
 		gs->board[y][i] = 0;
 	}
 }
 
+/*
+ * Clears the board.
+ */
 void
 clear_lines(struct game_state *gs)
 {
@@ -338,20 +393,26 @@ clear_lines(struct game_state *gs)
 	if (gs->lbreak_count) {
 		/* Loop though all lines in the board */
 		for (i = 0; i != gs->lbreak_count; ++i) {
-			log_write("-------!\n");
 			for (j = gs->lbreak_lines[i] - 1; j >= 0; --j) {
 				line_down(gs, j);
 			}
-			log_write("-------!\n");
 		}
 		
 		/* If at least 1 line was cleared, update score */
 		gs->score += (gs->level + 1) * score_mult[gs->lbreak_count - 1];
 		gs->lines += gs->lbreak_count;
 		gs->level = gs->lines / 10;
+
+		if (gs->score > gs->hi_score) {
+			gs->hi_score = gs->score;
+		}
 	}
 }
 
+/*
+ * Sets the current tetromino to the lowest position it can achieve
+ * whithout moving the 'x' position.
+ */
 void
 hard_drop(struct game_state *gs)
 {
@@ -359,33 +420,36 @@ hard_drop(struct game_state *gs)
 		;
 }
 
+/* -==+ Manipulate Tetromino +==- */
+
+/*
+ * Calculate the ghost 'y' position using the current tetromino as
+ * a reference.
+ */
 void
-hold_mino(struct game_state *gs)
+update_ghost(struct game_state *gs)
 {
-	const struct mino *m;
+	int i, j, x, y;
 
-	if (gs->flags & BIT(BLOCK_HOLD)) {
-		return;
-	}
+	i = 0;
+	do {
+		for (j = 0; j != 4; ++j) {
+			x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[j].x;
+			y = gs->curr_mino_pos.y + gs->curr_mino.block_pos[j].y + i;
 
-	m = &minos[gs->curr_mino.id];
-	if (gs->hold_mino == NULL) {
-		spawn_mino(gs);
-	} else {
-		memcpy(&gs->curr_mino, gs->hold_mino, sizeof (struct mino));
-	}
+			if (y >= 0 && (!in_range(x, y) || gs->board[y][x])) {
+				break;
+			}
+		}
 
-	gs->hold_mino = m;
+	} while (j == 4 && ++i);
 
-	/* Initial tetromino position */
-	gs->curr_mino_pos.x = (BOARD_W - 1) / 2;
-	gs->curr_mino_pos.y = 0;
-
-	update_ghost(gs);
-
-	gs->flags |= BIT(DRAW_BOARD) | BIT(DRAW_HOLD) | BIT(BLOCK_HOLD);
+	gs->ghost_pos = gs->curr_mino_pos.y + i - 1;
 }
 
+/*
+ * Replace current teromino with a new one and reset its location.
+ */
 void
 spawn_mino(struct game_state *gs)
 {
@@ -413,10 +477,53 @@ spawn_mino(struct game_state *gs)
 	gs->flags &= ~BIT(BLOCK_HOLD);
 }
 
+/*
+ * Swaps current tetromino with the currently held one, if there
+ * isn't any, hold that piece and grab a new one.
+ */
+void
+hold_mino(struct game_state *gs)
+{
+	const struct mino *m;
+
+	if (gs->flags & BIT(BLOCK_HOLD)) {
+		return;
+	}
+
+	m = &minos[gs->curr_mino.id];
+	if (gs->hold_mino == NULL) {
+		spawn_mino(gs);
+
+	} else {
+		memcpy(&gs->curr_mino, gs->hold_mino, sizeof (struct mino));
+	}
+
+	gs->hold_mino = m;
+
+	/* Initial tetromino position */
+	gs->curr_mino_pos.x = (BOARD_W - 1) / 2;
+	gs->curr_mino_pos.y = 0;
+
+	update_ghost(gs);
+
+	gs->flags |= BIT(DRAW_BOARD) | BIT(DRAW_HOLD) | BIT(BLOCK_HOLD);
+}
+
+/*
+ * Move current tetromino to specified location, checking for boundaries.
+ */
 int
 move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 {
 	int i, j, k, x, y;
+
+	/*
+	log_write("%d, %d\n", gs->curr_mino.block_pos[0].x, gs->curr_mino.block_pos[0].y);
+	log_write("%d, %d\n", gs->curr_mino.block_pos[1].x, gs->curr_mino.block_pos[1].y);
+	log_write("%d, %d\n", gs->curr_mino.block_pos[2].x, gs->curr_mino.block_pos[2].y);
+	log_write("%d, %d\n", gs->curr_mino.block_pos[3].x, gs->curr_mino.block_pos[3].y);
+	log_write("-------------------------------------------\n");
+	*/
 
 	for (i = 0; i != 4; ++i) {
 		x = gs->curr_mino_pos.x + gs->curr_mino.block_pos[i].x;
@@ -432,6 +539,7 @@ move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 					if (((double)clock() - gs->immune) / CLOCKS_PER_SEC < IMMUNITY_TIMER) {
 						return SUCCESS;
 					}
+
 				} else if (flags == SOFT_DROP) {
 					gs->immune = clock();
 					return SUCCESS;
@@ -444,7 +552,6 @@ move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 						[gs->curr_mino.block_pos[i].x + gs->curr_mino_pos.x] = gs->curr_mino.color;
 				}
 
-				/* clear_lines(gs); */
 				gs->lbreak_count = 0;
 				for (j = 0; j != BOARD_H; ++j) {
 					for (k = 0; k != BOARD_W && gs->board[j][k]; ++k)
@@ -459,20 +566,28 @@ move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 					gs->lbreak_timer = clock();
 					gs->lbreak_block = 0;
 					gs->flags |= BIT(LBREAK);
+
 				} else {
 					spawn_mino(gs);
 				}
 
 				gs->score += gs->drop_score;
 				gs->drop_score = 0;
+				
+				if (gs->score > gs->hi_score) {
+					gs->hi_score = gs->score;
+				}
 
 				/* Update falling speed */
 				if (gs->level <= 8) {
 					gs->fpc = 48 - (gs->level * 5);
+
 				} else if (gs->level <= 18) {
 					gs->fpc = 9 - (gs->level / 3);
+
 				} else if (gs->level <= 28) {
 					gs->fpc = 2;
+
 				} else {
 					gs->fpc = 1;
 				}
@@ -496,6 +611,9 @@ move_mino(struct game_state *gs, int dx, int dy, uint8_t flags)
 	return SUCCESS;
 }
 
+/*
+ * Rotates current tetromino, checking for boundaries.
+ */
 int
 rotate_mino(struct game_state *gs, int dir)
 {
@@ -523,6 +641,7 @@ rotate_mino(struct game_state *gs, int dir)
 			z = p->x;
 			p->x = -p->y;
 			p->y = z;
+
 		} else if (dir == COUNTER_CLOCKWISE) {
 			z = p->y;
 			p->y = -p->x;

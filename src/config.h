@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/* -==+ Blueprint for a RNG profile +==- */
 struct rand_prof {
 	const char *name;
 	void (*init)(void*);
@@ -37,6 +38,10 @@ struct rand_prof {
 	size_t mem_size;
 };
 
+/*
+ * -==+ Custom information +==-
+ * Contains the player's profile information.
+ */
 struct config_prof {
 	/* [Random Number Generator] */
 	void *rng;
@@ -47,9 +52,17 @@ struct config_prof {
 	uint8_t flags;
 };
 
+/* -==+ Loaders +==- */
+void load_rng(struct config_prof *prof, int rng_ind);
+       
+/* -==+ Configuration loading +==- */
 void config_default(struct config_prof *prof);
 int  config_read(const char *path, struct config_prof *prof);
 void config_free(struct config_prof *prof);
+
+/* -==+ Parsing +==- */
+int  line_empty(const char *str);
+int  grab_word(const char *str, const char **word);
 int  parse_line(const char *line, struct config_prof *prof);
 
 #endif /* CONFIG_H */
