@@ -19,12 +19,16 @@
 
 /* C library */
 #include <stdlib.h>
+#include <string.h>
+
 /* e-type */
 #include "tetris.h"
 #include "log.h"
 
+
 int  init_ncurses(struct game_state *gs);
 void handle_input(struct game_state *gs);
+
 
 int
 main(int argc, char **argv)
@@ -34,25 +38,108 @@ main(int argc, char **argv)
 	 * passing easier to handle since I can just pass the whole thing.
 	 */
 	struct game_state gs;
+	char *opts[3] = { "Single Player", "Multi Player", "Quit" };
+	int opt_i, i, quit, draw;
+	WINDOW *board, *stats, *hold;
 
 	/* Initialize everything */
 	log_init("e-type.log");
 	srand(time(NULL));
-	new_game(&gs);
 	init_ncurses(&gs);
 
-	/* Game loop */
-	refresh();
-	while (!(gs.flags & BIT(QUIT))) {
-		draw_game(&gs);
-		handle_input(&gs);
+	/* Create windows */
+	hold = newwin(8, 14, (LINES - BOARD_H - 2) / 2, COLS / 2 - 28);
+	board = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 - 14);
+	stats = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 + BOARD_W * 2 - 12);
 
-		if (!(gs.flags & BIT(PAUSE))) {
-			if (gs.flags & BIT(LBREAK)) {
-				update_lbreak(&gs);
-			} else {
-				update_timing(&gs);
+	draw = 1;
+	opt_i = quit = 0;
+	while (!quit) {
+		if (draw) {
+			for (i = 0; i != 3; ++i) {
+				if (opt_i == i) {
+					attron(COLOR_PAIR(GREEN));
+					mvprintw(LINES / 2 - 1 + i, (COLS - strlen(opts[0])) / 2, "[ %s ]", opts[i]);
+					attroff(COLOR_PAIR(GREEN));
+					
+				} else {
+					mvprintw(LINES / 2 - 1 + i, (COLS - strlen(opts[0])) / 2 + 2, opts[i]);
+				}
 			}
+
+			draw = 0;
+		}
+
+		switch (getch()) {
+		case 'w': case 'W':
+		case 'k': case 'K':
+		case KEY_UP:
+			move(LINES / 2 - 1 + opt_i, 0);
+			clrtoeol();
+			draw = 1;
+
+			if (opt_i == 0) {
+				opt_i = 2;
+
+			} else {
+				--opt_i;
+			}
+			
+			break;
+
+		case 's': case 'S':
+		case 'j': case 'J':
+		case KEY_DOWN:
+			move(LINES / 2 - 1 + opt_i, 0);
+			clrtoeol();
+			draw = 1;
+
+			if (opt_i == 2) {
+				opt_i = 0;
+
+			} else {
+				++opt_i;
+			}
+
+			break;
+
+		case 'q': case 'Q':
+			quit = 1;
+			break;
+
+		case '\n':
+			switch (opt_i) {
+			case 0:
+				new_game(&gs, board, stats, hold);
+				
+				while (!(gs.flags & BIT(QUIT))) {
+					draw_game(&gs);
+					handle_input(&gs);
+					
+					if (!(gs.flags & BIT(PAUSE))) {
+						if (gs.flags & BIT(LBREAK)) {
+							update_lbreak(&gs);
+						} else {
+							update_timing(&gs);
+						}
+					}
+				}
+
+				clear();
+				refresh();
+				draw = 1;
+
+				break;
+
+			case 1:
+				break;
+
+			case 2:
+				quit = 1;
+				break;
+			}
+			
+			break;
 		}
 	}
 	
@@ -81,11 +168,6 @@ init_ncurses(struct game_state *gs)
 	init_pair(CYAN, COLOR_CYAN, -1);
 	init_pair(WHITE, COLOR_WHITE, -1);
 
-	/* Create windows */
-	gs->hold_win = newwin(8, 14, 0, 0);
-	gs->board_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, 0, 14);
-	gs->stats_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, 0, BOARD_W * 2 + 16);
-
 	return 0;
 }
 
@@ -104,47 +186,47 @@ handle_input(struct game_state *gs)
 
 	} else {
 		switch (c) {
-		case 'W':
-		case 'w':
+		case 'W': case 'w':
 			move_mino(gs, 0, -1, SOFT_DROP);
 			break;
-		case 'S':
-		case 's':
+
+		case 'S': case 's':
 			move_mino(gs, 0, 1, SOFT_DROP);
 			break;
-		case 'A':
-		case 'a':
+
+		case 'A': case 'a':
 			move_mino(gs, -1, 0, SOFT_DROP);
 			break;
-		case 'D':
-		case 'd':
+
+		case 'D': case 'd':
 			move_mino(gs, 1, 0, SOFT_DROP);
 			break;
-		case 'J':
-		case 'j':
+
+		case 'J': case 'j':
 			rotate_mino(gs, CLOCKWISE);
 			break;
-		case 'K':
-		case 'k':
+
+		case 'K': case 'k':
 			rotate_mino(gs, COUNTER_CLOCKWISE);
 			break;
-		case 'R':
-		case 'r':
+
+		case 'R': case 'r':
 			spawn_mino(gs);
 			break;
-		case 'L':
-		case 'l':
+
+		case 'L': case 'l':
 			hold_mino(gs);
 			break;
+
 		case ' ':
 			hard_drop(gs);
 			break;
-		case 'P':
-		case 'p':
+
+		case 'P': case 'p':
 			pause(gs);
 			break;
-		case 'Q':
-		case 'q':
+
+		case 'Q': case 'q':
 			game_over(gs);
 			break;
 		}

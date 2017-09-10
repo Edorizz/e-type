@@ -127,15 +127,15 @@ struct game_state {
 	clock_t	clock;
 	clock_t	immune;
 	double fpc;
-	/* [Drawing] */
-	WINDOW *board_win, *stats_win, *hold_win;
 	/* [Config] */
 	struct config_prof prof;
+	/* [Drawing] */
+	WINDOW *board_win, *stats_win, *hold_win;
 };
 
 
 /* -==+ Start/End +==- */
-void new_game(struct game_state *gs);
+void new_game(struct game_state *gs, WINDOW *board_win, WINDOW *stats_win, WINDOW *hold_win);
 void game_over(struct game_state *gs);
 
 /* -==+ Drawing +==- */
