@@ -59,7 +59,7 @@ typedef enum { ROTATION, ROTATE_NONE, ROTATE_TWICE } mino_flags;
 /* Drawing flags */
 typedef enum { DRAW_GHOST } draw_flags;
 /* Flags used to tell the status of the game */
-typedef enum { QUIT, DRAW, LBREAK } status;
+typedef enum { QUIT, DRAW_BOARD, DRAW_STATS, DRAW_HOLD, LBREAK, BLOCK_HOLD } status;
 
 struct point {
 	int x, y;
@@ -70,8 +70,9 @@ struct mino {
 	char symbol;
 	struct point block_pos[4];
 	struct point pivot;
-	int color;
+	uint8_t color;
 	uint8_t	flags;
+	uint8_t id;
 };
 
 struct game_state {
@@ -79,6 +80,7 @@ struct game_state {
 	uint8_t board[BOARD_H][BOARD_W];
 	uint8_t flags;
 	struct mino curr_mino;
+	const struct mino *hold_mino;
 	struct point curr_mino_pos;
 	uint8_t ghost_pos;
 	struct config_prof prof;
@@ -99,15 +101,19 @@ struct game_state {
 	clock_t	immune;
 	double fpc;
 	/* [Extra] */
-	WINDOW *board_win, *stats_win, *next_win, *hold_win;
+	WINDOW *board_win, *stats_win, *hold_win;
 	FILE *scores;
 };
 
 void new_game(struct game_state *gs);
 void game_over(struct game_state *gs);
+
+/* Drawing */
 void draw_mino(WINDOW *win, const struct mino *m, int x, int y, uint8_t flags);
-void bdraw_mino(const struct mino *m, int x, int y, uint8_t flags);
+void draw_game(struct game_state *gs);
+void draw_stats(struct game_state *gs);
 void draw_board(struct game_state *gs);
+
 void update_timing(struct game_state *gs);
 void update_ghost(struct game_state *gs);
 void update_lbreak(struct game_state *gs);
@@ -118,6 +124,7 @@ void clear_lines(struct game_state *gs);
 void hard_drop(struct game_state *gs);
 
 void spawn_mino(struct game_state *gs);
+void hold_mino(struct game_state *gs);
 int  move_mino(struct game_state *gs, int dx, int dy, uint8_t flags);
 int  rotate_mino(struct game_state *gs, int dir);
 

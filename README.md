@@ -7,7 +7,7 @@ as many Tetris clones as I initially thought there would be, and most of them we
 to myself "Why look for one if I can just make it?", and that's the story of how e-type came to life. /:>
 
 ## Screenshots
-![game](img/game.png)
+![game](img/tetris.png)
 
 ## Building
 e-type depends solely on ncurses for terminal drawing which can be easily installed by using you preferred package manager. (If you dont already have it)
@@ -30,6 +30,7 @@ And to run:
 | d   | RIGHT |
 | j   | ROTATE CLOCKWISE |
 | k   | ROTATE COUNTER-CLOCKWISE |
-| <spc> | HARD DROP |
+| f   | HOLD |
+| space | HARD DROP |
 | q   | QUIT |
 

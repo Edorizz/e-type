@@ -36,15 +36,14 @@ main(int argc, char **argv)
 	new_game(&gs);
 	init_ncurses(&gs);
 
+	refresh();
+	box(gs.board_win, 0, 0);
+	wrefresh(gs.board_win);
+
 	/* Game loop */
 	refresh();
 	while (!(gs.flags & BIT(QUIT))) {
-		if (gs.flags & BIT(DRAW)) {
-			draw_board(&gs);
-			gs.flags ^= BIT(DRAW);
-
-			refresh();
-		}
+		draw_game(&gs);
 
 		if (gs.flags & BIT(LBREAK)) {
 			update_lbreak(&gs);
@@ -80,12 +79,9 @@ init_ncurses(struct game_state *gs)
 	init_pair(WHITE, COLOR_WHITE, -1);
 
 	/* Create windows */
-	gs->board_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, 0, 0);
-	gs->stats_win = newwin(BOARD_H  + 2, BOARD_W * 2 + 2, 0, BOARD_W * 2 + 2);
-	/*
-	gs->next_win= newwin(BOARD_H + 2, BOARD_W + 2, 0, 2 * (BOARD_W + 2));
-	gs->hold_win= newwin(BOARD_H + 2, BOARD_W + 2, 0, 3 * (BOARD_W + 2));
-	*/
+	gs->hold_win = newwin(8, 14, 0, 0);
+	gs->board_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, 0, 14);
+	gs->stats_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, 0, BOARD_W * 2 + 16);
 
 	return 0;
 }
@@ -121,6 +117,10 @@ handle_input(struct game_state *gs)
 	case 'R':
 	case 'r':
 		spawn_mino(gs);
+		break;
+	case 'L':
+	case 'l':
+		hold_mino(gs);
 		break;
 	case ' ':
 		hard_drop(gs);
