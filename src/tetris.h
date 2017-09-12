@@ -135,7 +135,7 @@ struct game_state {
 
 
 /* -==+ Start/End +==- */
-void new_game(struct game_state *gs, WINDOW *board_win, WINDOW *stats_win, WINDOW *hold_win);
+void new_game(struct game_state *gs);
 void game_over(struct game_state *gs);
 
 /* -==+ Drawing +==- */

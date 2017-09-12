@@ -109,16 +109,12 @@ const struct mino minos[7] = { { '<', '>',
  * Initialize everyting, read config file.
  */
 void
-new_game(struct game_state *gs, WINDOW *board_win, WINDOW *stats_win, WINDOW *hold_win)
+new_game(struct game_state *gs) 
 {
-	memset(gs, 0, sizeof (*gs));
+	memset(gs, 0, sizeof (*gs) - 3 * sizeof (WINDOW *));
 	gs->clock = clock();
 	gs->flags = BIT(DRAW_BOARD) | BIT(DRAW_STATS) | BIT(DRAW_HOLD);
 	gs->fpc = INITIAL_SPEED;
-
-	gs->board_win = board_win;
-	gs->stats_win = stats_win;
-	gs->hold_win = hold_win;
 
 	config_default(&gs->prof);
 	config_read("e-type.conf", &gs->prof);
@@ -127,7 +123,7 @@ new_game(struct game_state *gs, WINDOW *board_win, WINDOW *stats_win, WINDOW *ho
 	gs->prof.rand_init(gs->prof.rng);
 
 	if ((gs->scores = fopen(HI_SCORES, "rb"))) {
-		fread(&gs->hi_score, sizeof(gs->hi_score), 1, gs->scores);
+		fread(&gs->hi_score, sizeof gs->hi_score, 1, gs->scores);
 		fclose(gs->scores);
 	}
 

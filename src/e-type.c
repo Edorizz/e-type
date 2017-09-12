@@ -26,8 +26,32 @@
 #include "log.h"
 
 
+#define MENU_ROOT	0
+#define MENU_DRAW	1
+#define MENU_QUIT	2
+
+
+struct selection {
+	char *title;
+	struct selection *dropdown;
+	struct selection *parent;
+	int cnt, opt_i, select, drop_color;
+	void (*func) (struct game_state*);
+};
+
+
 int  init_ncurses(struct game_state *gs);
 void handle_input(struct game_state *gs);
+
+void print_logo(void);
+int  print_menu(struct selection *menu, int y, int x);
+void input_menu(struct selection *menu, struct game_state *gs, uint8_t *flags);
+
+/* Menu selection functions */
+void single_player(struct game_state *gs);
+void join_game(struct game_state *gs);
+void host_game(struct game_state *gs);
+void quit(struct game_state *gs);
 
 
 int
@@ -38,112 +62,88 @@ main(int argc, char **argv)
 	 * passing easier to handle since I can just pass the whole thing.
 	 */
 	struct game_state gs;
-	char *opts[3] = { "Single Player", "Multi Player", "Quit" };
-	int opt_i, i, quit, draw;
-	WINDOW *board, *stats, *hold;
+	struct selection menu, sub_menu[3], sub_mp[2];
+	uint8_t flags;
 
 	/* Initialize everything */
 	log_init("e-type.log");
 	srand(time(NULL));
 	init_ncurses(&gs);
 
+	/* Create sub-menu for the 'Multiplayer' option */
+	sub_mp[0].title = "Join";
+	sub_mp[0].dropdown = NULL;
+	sub_mp[0].parent = NULL;
+	sub_mp[0].cnt = 0;
+	sub_mp[0].opt_i = 0;
+	sub_mp[0].select = 0;
+	sub_mp[0].func = join_game;
+
+	sub_mp[1].title = "Host";
+	sub_mp[1].dropdown = NULL;
+	sub_mp[1].parent = NULL;
+	sub_mp[1].cnt = 0;
+	sub_mp[1].opt_i = 0;
+	sub_mp[1].select = 0;
+	sub_mp[1].func = host_game;
+
+	/* Create main menu */
+	sub_menu[0].title = "Singleplayer";
+	sub_menu[0].dropdown = NULL;
+	sub_menu[0].parent = &menu;
+	sub_menu[0].cnt = 0;
+	sub_menu[0].opt_i = 0;
+	sub_menu[0].select = 0;
+	sub_menu[0].func = single_player;
+
+	sub_menu[1].title = "Multiplayer";
+	sub_menu[1].dropdown = sub_mp;
+	sub_menu[1].parent = &menu;
+	sub_menu[1].cnt = 2;
+	sub_menu[1].opt_i = 0;
+	sub_menu[1].select = 0;
+	sub_menu[1].drop_color = BLUE;
+	sub_menu[1].func = NULL;
+
+	sub_menu[2].title = "Quit";
+	sub_menu[2].dropdown = NULL;
+	sub_menu[2].parent = &menu;
+	sub_menu[2].cnt = 0;
+	sub_menu[2].opt_i = 0;
+	sub_menu[2].select = 0;
+	sub_menu[2].func = quit;
+
+	menu.title = "Main menu";
+	menu.dropdown = sub_menu;
+	menu.parent = NULL;
+	menu.cnt = 3;
+	menu.opt_i = 1;
+	menu.select = 0;
+	menu.drop_color = GREEN;
+	menu.func = NULL;
+
 	/* Create windows */
-	hold = newwin(8, 14, (LINES - BOARD_H - 2) / 2, COLS / 2 - 28);
-	board = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 - 14);
-	stats = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 + BOARD_W * 2 - 12);
+	gs.hold_win = newwin(8, 14, (LINES - BOARD_H - 2) / 2, COLS / 2 - 28);
+	gs.board_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 - 14);
+	gs.stats_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 + BOARD_W * 2 - 12);
 
-	draw = 1;
-	opt_i = quit = 0;
-	while (!quit) {
-		if (draw) {
-			for (i = 0; i != 3; ++i) {
-				if (opt_i == i) {
-					attron(COLOR_PAIR(GREEN));
-					mvprintw(LINES / 2 - 1 + i, (COLS - strlen(opts[0])) / 2, "[ %s ]", opts[i]);
-					attroff(COLOR_PAIR(GREEN));
-					
-				} else {
-					mvprintw(LINES / 2 - 1 + i, (COLS - strlen(opts[0])) / 2 + 2, opts[i]);
-				}
-			}
+	flags |= BIT(MENU_DRAW);
 
-			draw = 0;
-		}
+	/* Main loop */
+	while (!(flags & BIT(MENU_QUIT))) {
+		flags |= BIT(MENU_ROOT);
+		input_menu(&menu, &gs, &flags);
 
-		switch (getch()) {
-		case 'w': case 'W':
-		case 'k': case 'K':
-		case KEY_UP:
-			move(LINES / 2 - 1 + opt_i, 0);
-			clrtoeol();
-			draw = 1;
-
-			if (opt_i == 0) {
-				opt_i = 2;
-
-			} else {
-				--opt_i;
-			}
-			
-			break;
-
-		case 's': case 'S':
-		case 'j': case 'J':
-		case KEY_DOWN:
-			move(LINES / 2 - 1 + opt_i, 0);
-			clrtoeol();
-			draw = 1;
-
-			if (opt_i == 2) {
-				opt_i = 0;
-
-			} else {
-				++opt_i;
-			}
-
-			break;
-
-		case 'q': case 'Q':
-			quit = 1;
-			break;
-
-		case '\n':
-			switch (opt_i) {
-			case 0:
-				new_game(&gs, board, stats, hold);
-				
-				while (!(gs.flags & BIT(QUIT))) {
-					draw_game(&gs);
-					handle_input(&gs);
-					
-					if (!(gs.flags & BIT(PAUSE))) {
-						if (gs.flags & BIT(LBREAK)) {
-							update_lbreak(&gs);
-						} else {
-							update_timing(&gs);
-						}
-					}
-				}
-
-				clear();
-				refresh();
-				draw = 1;
-
-				break;
-
-			case 1:
-				break;
-
-			case 2:
-				quit = 1;
-				break;
-			}
-			
-			break;
+		if (flags & BIT(MENU_DRAW)) {
+			clear();
+			print_logo();
+			print_menu(&menu, LINES / 2 - 1, (COLS - 15) / 2);
+			refresh();
+			flags ^= BIT(MENU_DRAW);
 		}
 	}
 	
-	endwin();
+	quit(&gs);
 	return 0;
 }
 
@@ -231,5 +231,160 @@ handle_input(struct game_state *gs)
 			break;
 		}
 	}
+}
+
+void
+print_logo(void)
+{
+	move(LINES / 2 - 3, (COLS - 6) / 2);
+
+	attron(COLOR_PAIR(RED));
+	addch('T');
+	attroff(COLOR_PAIR(RED));
+
+	attron(COLOR_PAIR(BLUE));
+	addch('E');
+	attroff(COLOR_PAIR(BLUE));
+
+	attron(COLOR_PAIR(YELLOW));
+	addch('T');
+	attroff(COLOR_PAIR(YELLOW));
+
+	attron(COLOR_PAIR(GREEN));
+	addch('R');
+	attroff(COLOR_PAIR(GREEN));
+
+	attron(COLOR_PAIR(CYAN));
+	addch('I');
+	attroff(COLOR_PAIR(CYAN));
+
+	attron(COLOR_PAIR(MAGENTA));
+	addch('S');
+	attroff(COLOR_PAIR(MAGENTA));
+}
+
+int
+print_menu(struct selection *menu, int y, int x)
+{
+	int i, line;
+
+	for (i = line = 0; i != menu->cnt; ++i) {
+		if (menu->opt_i == i) {
+			attron(COLOR_PAIR(menu->drop_color));
+			mvprintw(y + line++, x, "[ %s ]", menu->dropdown[i].title);
+			attroff(COLOR_PAIR(menu->drop_color));
+
+			if (menu->select) {
+				line += print_menu(&menu->dropdown[i], y + line, x + 2);
+			}
+
+		} else {
+			mvprintw(y + line++, x, "  %s", menu->dropdown[i].title);
+		}
+	}
+
+	return line;
+}
+
+void
+input_menu(struct selection *menu, struct game_state *gs, uint8_t *flags)
+{
+	if (menu->select) {
+		*flags &= ~BIT(MENU_ROOT);
+		input_menu(&menu->dropdown[menu->opt_i], gs, flags);
+
+	} else {
+		switch (getch()) {
+		case 'w': case 'W':
+		case 'k': case 'K':
+		case KEY_UP:
+			*flags |= BIT(MENU_DRAW);
+
+			if (menu->opt_i == 0) {
+				menu->opt_i = menu->cnt - 1;
+
+			} else {
+				--menu->opt_i;
+			}
+			
+			break;
+
+		case 's': case 'S':
+		case 'j': case 'J':
+		case KEY_DOWN:
+			*flags |= BIT(MENU_DRAW);
+
+			if (menu->opt_i == menu->cnt - 1) {
+				menu->opt_i = 0;
+
+			} else {
+				++menu->opt_i;
+			}
+
+			break;
+
+		case 'q': case 'Q':
+			*flags |= BIT(MENU_DRAW);
+
+			if (menu->parent) {
+				menu->parent->select = 0;
+
+			} else {
+				*flags |= BIT(MENU_QUIT);
+			}
+
+			break;
+
+		case '\n':
+			*flags |= BIT(MENU_DRAW);
+
+			if (menu->dropdown[menu->opt_i].dropdown) {
+				menu->select = 1;
+
+			} else if (menu->dropdown[menu->opt_i].func) {
+				menu->dropdown[menu->opt_i].func(gs);
+			}
+
+			break;
+		}
+	}
+}
+
+void
+single_player(struct game_state *gs)
+{
+	new_game(gs);
+
+	while (!(gs->flags & BIT(QUIT))) {
+		draw_game(gs);
+		handle_input(gs);
+		
+		if (!(gs->flags & BIT(PAUSE))) {
+			if (gs->flags & BIT(LBREAK)) {
+				update_lbreak(gs);
+			} else {
+				update_timing(gs);
+			}
+		}
+	}
+}
+
+void
+join_game(struct game_state *gs)
+{
+	/* TODO */
+}
+
+void
+host_game(struct game_state *gs)
+{
+	/* TODO */
+}
+
+void
+quit(struct game_state *gs)
+{
+	endwin();
+	exit(0);
 }
 
