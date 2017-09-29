@@ -21,6 +21,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* POSIX */
+#include <unistd.h>
+
+/* Sockets */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+
 /* e-type */
 #include "tetris.h"
 #include "log.h"
@@ -58,8 +68,8 @@ int
 main(int argc, char **argv)
 {
 	/*
-	 * I like using a big struct to hold everything because it makes agrument
-	 * passing easier to handle since I can just pass the whole thing.
+	 * I like using a big struct to hold everything since it makes agrument
+	 * passing easier to handle.
 	 */
 	struct game_state gs;
 	struct selection menu, sub_menu[3], sub_mp[2];
@@ -122,7 +132,7 @@ main(int argc, char **argv)
 	menu.drop_color = GREEN;
 	menu.func = NULL;
 
-	/* Create windows */
+	/* Create GUI windows */
 	gs.hold_win = newwin(8, 14, (LINES - BOARD_H - 2) / 2, COLS / 2 - 28);
 	gs.board_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 - 14);
 	gs.stats_win = newwin(BOARD_H + 2, BOARD_W * 2 + 2, (LINES - BOARD_H - 2) / 2, COLS / 2 + BOARD_W * 2 - 12);
@@ -181,7 +191,7 @@ handle_input(struct game_state *gs)
 
 	if (gs->flags & BIT(PAUSE)) {
 		if (c == 'P' || c == 'p') {
-			resume(gs);
+			resume_game(gs);
 		}
 
 	} else {
@@ -223,7 +233,7 @@ handle_input(struct game_state *gs)
 			break;
 
 		case 'P': case 'p':
-			pause(gs);
+			pause_game(gs);
 			break;
 
 		case 'Q': case 'q':
@@ -240,23 +250,18 @@ print_logo(void)
 
 	attron(COLOR_PAIR(RED));
 	addch('T');
-	attroff(COLOR_PAIR(RED));
 
 	attron(COLOR_PAIR(BLUE));
 	addch('E');
-	attroff(COLOR_PAIR(BLUE));
 
 	attron(COLOR_PAIR(YELLOW));
 	addch('T');
-	attroff(COLOR_PAIR(YELLOW));
 
 	attron(COLOR_PAIR(GREEN));
 	addch('R');
-	attroff(COLOR_PAIR(GREEN));
 
 	attron(COLOR_PAIR(CYAN));
 	addch('I');
-	attroff(COLOR_PAIR(CYAN));
 
 	attron(COLOR_PAIR(MAGENTA));
 	addch('S');
@@ -372,13 +377,95 @@ single_player(struct game_state *gs)
 void
 join_game(struct game_state *gs)
 {
-	/* TODO */
+	struct addrinfo *res, hints;
+	int host_fd, err;
+	char ch, host_in, host_ip[] = "localhost";
+
+	clear();
+	refresh();
+
+	memset(&hints, 0, sizeof (struct addrinfo));
+	hints.ai_flags = AF_UNSPEC;
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((err = getaddrinfo(host_ip, "1234", &hints, &res))) {
+		fprintf(stderr, "%s", gai_strerror(err));
+		return;
+	}
+
+	if ((host_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		perror("socket");
+		return;
+	}
+
+	if ((connect(host_fd, res->ai_addr, res->ai_addrlen)) == -1) {
+		perror("connect");
+		return;
+	}
+
+	while ((ch = getch())) {
+		if (ch != ERR && send(host_fd, &ch, 1, 0) == -1) {
+			perror("send");
+			break;
+		}
+	}
+
+	close(host_fd);
 }
 
 void
 host_game(struct game_state *gs)
 {
-	/* TODO */
+	struct addrinfo *res, hints;
+	int sock_fd, client_fd, err;
+	char client_in;
+
+	clear();
+	refresh();
+
+	memset(&hints, 0, sizeof (struct addrinfo));
+	hints.ai_flags = AF_UNSPEC;
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+
+	if ((err = getaddrinfo(NULL, "1234", &hints, &res))) {
+		fprintf(stderr, "%s\n", gai_strerror(err));
+		return;
+	}
+
+	if ((sock_fd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+		perror("socket");
+		return;
+	}
+
+	err = 1;
+	if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &err, sizeof err) == -1) {
+		perror("setsockopt");
+		return;
+	}
+
+	if (bind(sock_fd, res->ai_addr, res->ai_addrlen) == -1) {
+		perror("bind");
+		return;
+	}
+
+	if (listen(sock_fd, 5) == -1) {
+		perror("listen");
+		return;
+	}
+
+	if ((client_fd = accept(sock_fd, NULL, NULL)) == -1) {
+		perror("accept");
+		return;
+	}
+
+	while (recv(client_fd, &client_in, 1, 0) > 0) {
+		mvprintw(LINES / 2, COLS / 2, "%c", client_in);
+		refresh();
+	}
+
+	close(sock_fd);
 }
 
 void

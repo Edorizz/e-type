@@ -145,8 +145,8 @@ void draw_stats(struct game_state *gs);
 void draw_board(struct game_state *gs);
 
 /* -==+ Timing +==- */
-void pause(struct game_state *gs);
-void resume(struct game_state *gs);
+void pause_game(struct game_state *gs);
+void resume_game(struct game_state *gs);
 void update_timing(struct game_state *gs);
 void update_lbreak(struct game_state *gs);
 

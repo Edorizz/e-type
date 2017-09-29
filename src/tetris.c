@@ -285,7 +285,7 @@ draw_board(struct game_state *gs)
 /* -==+ Timing +==- */
 
 void
-pause(struct game_state *gs)
+pause_game(struct game_state *gs)
 {
 	gs->flags |= BIT(PAUSE);
 	gs->pause_clock = clock();
@@ -303,7 +303,7 @@ pause(struct game_state *gs)
 }
 
 void
-resume(struct game_state *gs)
+resume_game(struct game_state *gs)
 {
 	gs->flags |= BIT(DRAW_BOARD) | BIT(DRAW_HOLD);
 	gs->flags &= ~BIT(PAUSE);
